@@ -1,0 +1,816 @@
+/* ==================================================
+
+   general style of common elements
+
+   ================================================== */
+
+/* label */
+
+QWidget {
+	color: @text_color@;
+}
+
+QLabel {
+	font-family: "Inter";
+	font-size: @default_font_size@;
+}
+
+/* scroll bar */
+
+QScrollBar:vertical {
+    background-color: @scrollbar_dark@;
+	border: 1px solid #2f2f2f;
+    width: 10;
+    margin: 1px;
+    border-radius: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: @scrollbar_light@;
+    min-height: 30px;
+    border-radius: 1px;
+}
+
+QScrollBar::handle:vertical:hover { background-color: @scrollbar_light_hover@; }
+
+QScrollBar::sub-line:vertical {
+    margin: 0px;
+    width: 0px;
+    height: 0px;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::add-line:vertical {
+    margin: 0px;
+    width: 0px;
+    height: 0px;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical { background-color: none; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background-color: transparent; }
+
+QScrollBar:horizontal {
+    background-color: @scrollbar_dark@;
+	border: 1px solid #2f2f2f;
+    height: 10;
+    margin: 1px;
+    border-radius: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: @scrollbar_light@;
+    min-width: 30px;
+    border-radius: 1px;
+}
+
+QScrollBar::handle:horizontal:hover { background-color: @scrollbar_light_hover@; }
+
+QScrollBar::sub-line:horizontal {
+    margin: 0px;
+    width: 0px;
+    height: 0px;
+    subcontrol-position: left;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::add-line:horizontal {
+    margin: 0px;
+    width: 0px;
+    height: 0px;
+    subcontrol-position: right;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::up-arrow:horizontal, QScrollBar::down-arrow:horizontal { background-color: none; }
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background-color: transparent; }
+
+/* tool tip */
+
+QToolTip {
+    color: @text_color@;
+    background-color: @menu_tooltip_background@;
+    padding: 4px;
+	border-radius: 3px;
+}
+
+/* menus (right click menu) */
+
+QMenu, QMenu::item {
+    color: @text_color@;
+    background-color: @menu_tooltip_background@;
+    text-decoration: none;
+}
+
+QMenu::item {
+    padding: 6px;
+}
+
+QMenu::item:selected, QMenu::item:pressed {
+    background-color: @menu_tooltip_hover@;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: @text_color@;
+    margin: 6px 4px;
+}
+
+/* dialog box */
+
+QColorDialog, QDialog {
+	color: @text_color@;
+    background-color: @dialog_background@;
+}
+
+/* textbox */
+
+QLineEdit {
+	font-family: "Inter";
+	font-size: @default_font_size@;
+    text-align: left;
+    padding-top: 6px;
+	padding-bottom: 6px;
+	padding-left: 12px;
+	padding-right: 12px;
+	background: none;
+	border: none;
+	color: @text_color@;
+	border-radius: 3px;
+	background-color: @menu_textbox_background@;
+    selection-color: @text_color@;
+}
+
+QLineEdit:hover, QLineEdit:focus {
+	background-color: @menu_textbox_background_hover@;
+}
+
+/* combobox */
+
+QComboBox {
+	font-family: "Inter";
+	font-size: @default_font_size@;
+    text-align: left;
+    padding-top: 6px;
+	padding-bottom: 6px;
+	padding-left: 12px;
+	padding-right: 12px;
+	background: none;
+	border: none;
+	color: @text_color@;
+	border-radius: 3px;
+	background-color: @menu_textbox_background@;
+}
+
+QComboBox:hover {
+	background-color: @menu_textbox_background_hover@;
+}
+
+QComboBox::drop-down {
+    background-color: transparent;
+	subcontrol-origin: padding;
+    subcontrol-position: top right;
+	border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+	width: 26px;
+	margin-top: -2px;
+}
+
+QComboBox::down-arrow {
+    image: url("@osPath@/stylesheet/media/icons/drop-down-arrow-icon.png");
+	width: @icon_size@;
+    height: @icon_size@;
+	padding-top: 4px;
+}
+
+QComboBox QAbstractItemView {
+	color: @text_color@;
+    background-color: @menu_tooltip_background@;
+    border-style: solid;
+    border-color: transparent;
+    margin: 0px -1px 0px 0px;
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+	outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+	border: none;
+	padding: 5px;
+}
+
+QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selected {
+	background-color: @menu_tooltip_hover@;
+	padding: 5px;
+	selection-color: @text_color@;
+}
+
+/* push button */
+
+QPushButton {
+	qproperty-iconSize: @icon_size@;
+	
+	font-family: "Inter";
+	font-size: @default_font_size@;
+    text-align: left;
+    padding-top: 8px;
+	padding-bottom: 8px;
+	padding-left: 10px;
+	padding-right: 12px;
+	background: none;
+	border: none;
+	color: @text_color@;
+	border-radius: 3px;
+	background-color: @menu_button_background@;
+}
+
+QPushButton:hover {
+	background-color: @menu_button_background_hover@;
+}
+
+/* tool button */
+
+QToolButton {
+	qproperty-iconSize: @icon_size@;
+	
+	font-family: "Inter";
+	font-size: @default_font_size@;
+    text-align: left;
+    padding-top: 7px;
+	padding-bottom: 6px;
+	padding-left: 7px;
+	padding-right: 6px;
+	background: none;
+	border: none;
+	color: @text_color@;
+	border-radius: 3px;
+	background-color: @menu_button_background@;
+}
+
+QToolButton:hover {
+	background-color: @menu_button_background_hover@;
+}
+
+/* checkbox */
+
+QCheckBox {
+	font-family: "Inter";
+	font-size: @default_font_size@;
+	color: @text_color@;
+	spacing: 10px;
+    outline: none;
+    background-color: transparent;
+}
+
+QCheckBox::indicator {
+	border:1px solid @tile_background@;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+	padding: 4px;
+}
+
+QCheckBox::indicator:checked {
+    background-color: @tile_button_background@;
+	image: url("@osPath@/stylesheet/media/icons/check-icon.png");
+}
+
+QCheckBox::indicator:unchecked {
+	background-color: @tile_button_background@;
+}
+
+QCheckBox:focus {
+    border: none;
+}
+
+/* groupbox */
+
+QGroupBox {
+	font-family: "Inter";
+	font-size: @title_font_size@;
+	background-color: @tile_background@;
+	border: none;
+	border-radius: 3px;
+	padding: 10px;
+	padding-top: 48px;
+}
+
+QGroupBox:title {
+	color: @text_color@;
+	margin-top: 14px;
+	margin-left: 4px;
+}
+
+/* progress bar */
+
+QProgressBar, QProgressBar:horizontal {
+    color: @text_color@;
+    background-color: @progress_bar@;
+    text-align: center;
+    border: 1px solid @progress_bar@;
+    border-radius: 3px;
+	height: 30px;
+}
+
+QProgressBar::chunk, QProgressBar::chunk:horizontal {
+    background-color: @progress_bar_background@;
+    border-radius: 2px;
+}
+
+QScrollArea {
+	background: transparent;
+	border: none;
+}
+
+QGroupBox::indicator {
+	width: @icon_size@;
+	height: @icon_size@;
+	margin-top: 2px;
+}
+
+QGroupBox::indicator:checked:hover, QGroupBox::indicator:unchecked:hover {
+    background: rgba(255, 255, 255, 40);
+    border-radius: 2px;
+}
+
+QGroupBox::indicator:unchecked {
+    image:url("@osPath@/stylesheet/media/icons/drop-down-arrow-closed-icon.png");
+    background: transparent;
+    border-width: 0px;
+}
+
+QGroupBox::indicator:checked {
+    image:url("@osPath@/stylesheet/media/icons/drop-down-arrow-icon.png");
+    background: transparent;
+    border-width: 0px;
+}
+
+#combo_button, #combo_button_no_hover {
+	qproperty-iconSize: @icon_size@;
+
+	padding-top: 7px;
+	padding-bottom: 7px;
+	padding-left: 9px;
+}
+
+#combo_button::drop-down {
+	border-left: 1px solid @tile_button_separator@;
+}
+
+TileWidget #combo_button_no_hover:hover {
+	background-color: @tile_button_background@;
+}
+
+#combo_button:hover {
+	background-color: @menu_textbox_background_hover@;
+}
+
+#combo_button QAbstractItemView::item {
+	padding-top: 0px;
+	padding-bottom: 0px;
+	padding-left: 3px;
+	padding-right: 3px;
+}
+
+
+/* ==================================================
+
+   window and window header
+
+   ================================================== */
+
+#dlg_hub {
+	background-color: rgb(51, 52, 56);
+}
+
+#header {
+	background-color: rgba(0, 0, 0, 0.2);
+}
+
+#header QToolButton {
+	qproperty-iconSize: 14px;
+
+	padding: 7px 6px 6px 7px;
+	margin: 0;
+	border: none;
+	border-radius: 0px;
+	background-color: transparent;
+}
+
+#header QToolButton:hover {
+	background-color: @nav_button_background_dark@;
+}
+
+#header #window_close_button:hover {
+	background-color: @window_close_hover@;
+}
+
+
+/* ==================================================
+
+   left navigation (main menu)
+
+   ================================================== */
+
+#l_logo {
+	padding: 6px;
+	margin-bottom: 20px;
+	
+	qproperty-pixmap: url("@osPath@/stylesheet/media/prism-hub-logo-200px.png");
+}
+
+#w_navigationLeft QAbstractButton {
+	qproperty-iconSize: @icon_size@;
+
+	font-size: @nav_font_size@;
+    text-align: left;
+    padding: 10px;
+	background: none;
+	border: none;
+	color: @text_color@;
+	border-radius: 3px;
+}
+
+#w_navigationLeft QAbstractButton:checked {
+	background-color: @nav_button_background_checked@;
+}
+
+#w_navigationLeft QAbstractButton:hover, #w_navigationLeft QAbstractButton:checked:hover {
+	background-color: @nav_button_background_hover@;
+}
+
+#w_navigationLeft #b_account, #w_navigationLeft #b_refresh {
+	background-color: @nav_button_background_dark@;
+	text-align: center;
+}
+
+#w_navigationLeft #b_account:hover, #w_navigationLeft #b_refresh:hover {
+	background-color: @nav_button_background_dark_hover@;
+}
+
+
+/* ==================================================
+
+   button icons
+
+   ================================================== */
+
+#b_plugins { qproperty-icon: url("@osPath@/stylesheet/media/icons/plugins-icon.png"); }
+#b_prismVersions { qproperty-icon: url("@osPath@/stylesheet/media/icons/prism-versions-icon.png"); }
+#b_stylesheets { qproperty-icon: url("@osPath@/stylesheet/media/icons/stylesheets-icon.png"); }
+#b_tutorials { qproperty-icon: url("@osPath@/stylesheet/media/icons/tutorials-icon.png"); }
+#b_codeSnippets { qproperty-icon: url("@osPath@/stylesheet/media/icons/code-snippets-icon.png"); }
+#b_news { qproperty-icon: url("@osPath@/stylesheet/media/icons/news-icon.png"); }
+#b_account {qproperty-icon: url("@osPath@/stylesheet/media/icons/account-icon.png");}
+#details_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/info-icon.png"); }
+#download_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/download-icon.png"); }
+#b_refresh { qproperty-icon: url("@osPath@/stylesheet/media/icons/update-icon.png"); }
+#settings_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/settings-icon.png"); }
+#grid_layout_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/grid-view-icon.png"); }
+#list_layout_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/list-view-icon.png"); }
+#documentation_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/question-mark-icon.png"); }
+#update_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/update-icon.png"); }
+#uninstall_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/delete-icon.png"); }
+#locked_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/lock-icon.png"); }
+#account_login_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/lock-icon.png"); }
+#account_login_browser_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/next-icon.png"); }
+#lightbox_prev_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/prev-icon.png"); }
+#lightbox_next_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/next-icon.png"); }
+#watch_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/play-icon.png"); }
+#read_more_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/info-icon.png"); }
+#copy_code_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/copy-icon.png"); }
+#save_code_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/save-icon.png"); }
+#open_web_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/open-web-icon.png"); }
+#web_login_button { qproperty-icon: url("@osPath@/stylesheet/media/icons/open-web-icon.png"); }
+
+
+/* ==================================================
+
+   transparent back for qwidgets
+
+   ================================================== */
+
+#w_tiles, #w_pluginList, #w_prism_versions {
+    border-radius: 3px;
+    background-color: transparent;
+}
+
+
+/* ==================================================
+
+   tile view + nothing found + stylesheet tiles + thumbnail tiles
+
+   ================================================== */
+
+#l_nothing_found {
+	font-size: @list_title_font_size@;
+	color: @text_color@;
+}
+
+TileWidget {
+	background-color: @tile_background@;
+	border-radius: 3px;
+}
+
+TileWidget QLabel {
+	font-size: @default_font_size@;
+	color: @text_color@;
+	padding-left: 0px;
+}
+
+#tile_name {
+	font-size: @title_font_size@;
+	font-weight: bold;
+	padding-left: 0;
+}
+
+TileWidget #tile_tag {
+	font-size: @nav_font_size@;
+	font-style: italic;
+	color: @text_grey@;
+	margin-top: 2px;
+}
+
+TileWidget QPushButton {
+	qproperty-iconSize: @icon_size@;
+
+	background-color: @tile_button_background@;
+}
+
+TileWidget QToolButton {
+	qproperty-iconSize: @icon_size@;
+
+	background-color: @tile_button_background@;
+}
+
+TileWidget QPushButton:hover {
+	background-color: @tile_button_background_hover@;
+}
+
+#title_info {
+	font-size: 12px;
+	font-weight: bold;
+	padding-top: 4px;
+	padding-bottom: 4px;
+	padding-left: 9px;
+	padding-right: 9px;
+	border-radius: 12px;
+}
+
+#stylesheet_logo {
+	padding: 0;
+	margin: 0;
+	border-bottom: 1px solid @details_code_background@;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 0px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 0px;
+}
+
+#thumbnail_logo {
+	padding: 0;
+	margin: 0;
+	border-right: 1px solid @details_code_background@;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 3px;
+	border-top-right-radius: 0px;
+	border-bottom-right-radius: 0px;
+}
+
+/* tile backgrounds */
+
+#Houdini { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #fe4703, stop:1 #8d320f); }
+#Blender { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #ffffff, stop:1 #8e8e8d); }
+#Maya { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #0696D7, stop:1 #0f6187); }
+#Launcher { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #f6920f, stop:0.5 #b13122, stop:1 #6a1a23); }
+#Shotgrid { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #0696D7, stop:1 #0f6187); }
+#Nuke { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #f19a04, stop:1 #8b6626); }
+
+
+/* ==================================================
+
+   list view
+
+   ================================================== */
+
+#list_logo {
+	margin: 0px;
+	padding: 0px;
+}
+
+#list_container_logo {
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 3px;
+}
+
+#list_name {
+	font-size: @list_title_font_size@;
+	font-weight: bold;
+}
+
+#list_tag {
+	font-style: italic;
+	color: @text_grey@;
+}
+
+#list_info {
+	font-size: @default_font_size@;
+	font-weight: bold;
+	padding-top: 7px;
+	padding-bottom: 7px;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+
+/* list backgrounds */
+
+#Houdini_list_view #list_container_logo { background: #fe4703; }
+#Blender_list_view #list_container_logo { background: #ffffff; }
+#Maya_list_view #list_container_logo { background: #0696D7; }
+#Launcher_list_view #list_container_logo { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #f6920f, stop:0.5 #f24b1f, stop:1 #b6152c); }
+#Shotgrid_list_view #list_container_logo { background: #0696D7; }
+#Nuke_list_view #list_container_logo { background: #f19a04; }
+
+
+/* ==================================================
+
+   plugins header (filters and search)
+
+   ================================================== */
+
+#settings_button {
+	margin-right: 10px;
+}
+
+#plugin_header #grid_layout_button {
+	margin: 0;
+	border-top-right-radius: 0px;
+	border-bottom-right-radius: 0px;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 3px;
+	background-color: @menu_button_background_dark@;
+}
+
+#plugin_header #list_layout_button {
+	margin: 0;
+	border-top-left-radius: 0px;
+	border-bottom-left-radius: 0px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	background-color: @menu_button_background_dark@;
+}
+
+#plugin_header #grid_layout_button:hover { background-color: @menu_button_background_dark_hover@; }
+#plugin_header #list_layout_button:hover { background-color: @menu_button_background_dark_hover@; }
+
+#plugin_header #grid_layout_button:checked { background-color: @menu_button_background@; }
+#plugin_header #list_layout_button:checked { background-color: @menu_button_background@; }
+
+
+/* ==================================================
+
+   dark overlay
+
+   ================================================== */
+   
+#w_shadow {
+	background-color: @overlay_background@;
+}
+
+
+/* ==================================================
+
+   details overlay
+
+   ================================================== */
+   
+DetailsWidget {
+	background-color: @overlay_widget_background@;
+	border-radius: 3px;
+}
+
+DetailsWidget #details_content, DetailsWidget #details_content_widget,
+DetailsWidget #details_screenshots, DetailsWidget #details_screenshots_list {
+	background: transparent;
+	border: none;
+	margin: 0;
+	padding: 0;
+}
+
+DetailsWidget QLabel { color: @text_color@; }
+
+DetailsWidget #details_close_button {
+	background-color: transparent;
+	border: none;
+}
+
+DetailsWidget #details_close_button:hover { background-color: @window_close_hover@; }
+
+DetailsWidget #details_title {
+	font-size: @details_title_font_size@;
+	font-weight: bold;
+	margin-left: 2px;
+}
+
+DetailsWidget #details_tag {
+	font-size: @list_title_font_size@;
+	font-style: italic;
+	color: @text_grey@;
+	margin-top: 8px;
+}
+
+DetailsWidget #details_infotext_title {
+	font-size: @title_font_size@;
+	font-weight: bold;
+	margin-bottom: 0px;
+}
+
+DetailsWidget #details_intotext_description {
+	margin-left: 0px;
+}
+
+DetailsWidget #details_code {
+	padding: 4px 10px;
+	font-family: "Inconsolata";
+	font-size: @details_code_font_size@;
+	color: @details_text_color@;
+	background-color: @details_code_background@;
+	border-radius: 3px;
+}
+
+DetailsWidget #details_screenshot { margin-right: 6px; }
+
+DetailsWidget #combo_button {
+	background-color: @menu_button_background@;
+}
+
+DetailsWidget #combo_button:hover {
+	background-color: @menu_button_background_hover@;
+}
+
+/* details backgrounds */
+
+#Houdini_details #details_logo { background: #fe4703; }
+#Blender_details #details_logo { background: #ffffff; }
+#Maya_details #details_logo { background: #0696D7; }
+#Launcher_details #details_logo { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.3, stop:0 #f6920f, stop:0.5 #f24b1f, stop:1 #b6152c); }
+#Shotgrid_details #details_logo { background: #0696D7; }
+#Nuke_details #details_logo { background: #f19a04; }
+
+#version_details #details_logo { background: @versions_icon_background@; }
+
+
+/* ==================================================
+
+   versions list (installed and available)
+
+   ================================================== */
+
+#w_prism_versions_available_list {
+	background-color: transparent;
+}
+
+/* list_tag style is set in list view section */
+
+#version_list_view_item #list_container_logo { background: @versions_icon_background@; }
+
+/* ==================================================
+
+   Lightbox
+
+   ================================================== */
+
+LightboxWidget #lightbox_prev_button, LightboxWidget #lightbox_next_button {
+	background-color: transparent;
+	border: none;
+}
+
+LightboxWidget #lightbox_prev_button:hover, LightboxWidget #lightbox_next_button:hover {
+	background-color: @tile_button_background_hover@;
+}
+
+LightboxWidget #lightbox_close_button {
+	background-color: transparent;
+	border: none;
+}
+
+LightboxWidget #lightbox_close_button:hover { background-color: @window_close_hover@; }
+
+LightboxWidget #lightbox_description {
+	color: @text_color@;
+	font-size: @list_title_font_size@;
+}
+
+/* ==================================================
+
+   Loading animation
+
+   ================================================== */
+
+#loading_text {
+	color: @text_color@;
+	font-size: @title_font_size@;
+}

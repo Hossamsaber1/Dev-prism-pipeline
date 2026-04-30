@@ -1,0 +1,26 @@
+20/04/26 17:08:53 ERROR - ProductBrowser
+
+Core: v2.1.0
+App plugin: Standalone v2.1.0
+
+  File "H:\Prism-Dev\Prism_v1 - Copy\/Scripts/PrismCore.py", line 4918, in <module>
+    show(prismArgs=["loadProject"])
+  File "H:\Prism-Dev\Prism_v1 - Copy\/Scripts/PrismCore.py", line 4835, in show
+    qapp.exec_()
+  File "H:\Prism-Dev\Prism_v1 - Copy\PythonLibs\Python3\qtpy\QtWidgets.py", line 149, in <lambda>
+    QApplication.exec_ = lambda *args, **kwargs: possibly_static_exec(
+  File "H:\Prism-Dev\Prism_v1 - Copy\PythonLibs\Python3\qtpy\_utils.py", line 53, in possibly_static_exec
+    return args[0].exec()
+  File "H:\Prism-Dev\Prism_v1 - Copy\Scripts\PrismUtils\Decorators.py", line 89, in func_wrapper
+    "".join(traceback.format_stack()),
+
+
+Traceback (most recent call last):
+  File "H:\Prism-Dev\Prism_v1 - Copy\Scripts\PrismUtils\Decorators.py", line 54, in func_wrapper
+    return func(*args, **kwargs)
+  File "H:\Prism-Dev\Prism_v1 - Copy\Scripts\ProjectScripts\ProductBrowser.py", line 415, in mouseDrag
+    if not os.path.isfile(version):
+           ~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: _path_isfile: path should be string, bytes, os.PathLike or integer, not NoneType
+
+
