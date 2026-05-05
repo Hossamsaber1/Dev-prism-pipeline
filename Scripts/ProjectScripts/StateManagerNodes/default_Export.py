@@ -108,6 +108,10 @@ class ExportClass(object):
             outputFormats = getattr(self.core.appPlugin, "outputFormats", [])
 
         self.cb_outType.addItems(outputFormats)
+        defaultOutputType = ".max"
+        idx = self.cb_outType.findText(defaultOutputType)
+        if idx != -1:
+            self.cb_outType.setCurrentIndex(idx)       
         self.export_paths = self.core.paths.getExportProductBasePaths()
         self.cb_outPath.addItems(list(self.export_paths.keys()))
         if len(self.export_paths) < 2:
@@ -759,8 +763,8 @@ class ExportClass(object):
             if hasattr(self.core.appPlugin, "getFrameRange"):
                 startFrame, endFrame = self.core.appPlugin.getFrameRange(self)
             else:
-                startFrame = 1001
-                endFrame = 1100
+                startFrame = 1
+                endFrame = 100
         elif rangeType == "Shot":
             context = self.getCurrentContext()
             if context.get("type") == "shot" and "sequence" in context:
@@ -779,7 +783,7 @@ class ExportClass(object):
             if hasattr(self.core.appPlugin, "getCurrentFrame"):
                 startFrame = self.core.appPlugin.getCurrentFrame()
             else:
-                startFrame = 1001
+                startFrame = 1
         elif rangeType == "Custom":
             startFrame = self.sp_rangeStart.value()
             endFrame = self.sp_rangeEnd.value()

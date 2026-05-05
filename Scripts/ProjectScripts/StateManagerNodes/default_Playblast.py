@@ -551,8 +551,8 @@ class PlayblastClass(object):
             if hasattr(self.core.appPlugin, "getFrameRange"):
                 startFrame, endFrame = self.core.appPlugin.getFrameRange(self)
             else:
-                startFrame = 1001
-                endFrame = 1100
+                startFrame = 0
+                endFrame = 100
         elif rangeType == "Shot":
             context = self.getCurrentContext()
             if context.get("type") == "shot" and "sequence" in context:
@@ -571,7 +571,7 @@ class PlayblastClass(object):
             if hasattr(self.core.appPlugin, "getCurrentFrame"):
                 startFrame = self.core.appPlugin.getCurrentFrame()
             else:
-                startFrame = 1001
+                startFrame = 0
         elif rangeType == "Custom":
             startFrame = self.sp_rangeStart.value()
             endFrame = self.sp_rangeEnd.value()

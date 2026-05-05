@@ -113,6 +113,7 @@ class ImageRenderClass(object):
         self.mediaType = "3drenders"
         self.tasknameRequired = True
         self.outputFormats = [
+            ".tif",
             ".exr",
             ".png",
             ".jpg",
@@ -891,8 +892,8 @@ class ImageRenderClass(object):
                 startFrame = int(startFrame)
                 endFrame = int(endFrame)
             else:
-                startFrame = 1001
-                endFrame = 1100
+                startFrame = 1
+                endFrame = 100
         elif rangeType == "Shot":
             context = self.getCurrentContext()
             if context.get("type") == "shot" and "sequence" in context:
@@ -911,7 +912,7 @@ class ImageRenderClass(object):
             if hasattr(self.core.appPlugin, "getCurrentFrame"):
                 startFrame = int(self.core.appPlugin.getCurrentFrame())
             else:
-                startFrame = 1001
+                startFrame = 1
         elif rangeType == "Custom":
             startFrame = self.sp_rangeStart.value()
             endFrame = self.sp_rangeEnd.value()

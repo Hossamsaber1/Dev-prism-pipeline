@@ -114,7 +114,7 @@ class Ui_dlg_EditShot(object):
         self.sp_startFrame.setObjectName(u"sp_startFrame")
         self.sp_startFrame.setMinimumSize(QSize(60, 0))
         self.sp_startFrame.setMaximum(99999)
-        self.sp_startFrame.setValue(1001)
+        self.sp_startFrame.setValue(0)
 
         self.horizontalLayout.addWidget(self.sp_startFrame)
 
@@ -129,7 +129,7 @@ class Ui_dlg_EditShot(object):
         self.sp_endFrame.setObjectName(u"sp_endFrame")
         self.sp_endFrame.setMinimumSize(QSize(60, 0))
         self.sp_endFrame.setMaximum(99999)
-        self.sp_endFrame.setValue(1100)
+        self.sp_endFrame.setValue(100)
 
         self.horizontalLayout.addWidget(self.sp_endFrame)
 

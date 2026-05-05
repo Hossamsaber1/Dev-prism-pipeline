@@ -598,7 +598,7 @@ class ProjectEntities(object):
 
         sfiles = {}
         for sDir in sceneDirs:
-            if not os.path.exists(sDir):
+            if not sDir or not os.path.exists(sDir):
                 continue
 
             for root, dirs, files in os.walk(sDir):

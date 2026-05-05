@@ -96,7 +96,7 @@ class Prism_PluginEmpty_Functions(object):
 
     @err_catcher(name=__name__)
     def getFrameRange(self, origin):
-        startframe = 0
+        startframe = 1
         endframe = 100
 
         return [startframe, endframe]

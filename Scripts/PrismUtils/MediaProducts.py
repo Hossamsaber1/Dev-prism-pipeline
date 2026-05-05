@@ -1765,7 +1765,7 @@ class MediaProducts(object):
             if shotRange:
                 startFrame = shotRange[0]
                 if startFrame is None:
-                    startFrame = 1001
+                    startFrame = 1
 
         with self.copyMsg as copyMsg:
             for idx, file in enumerate(files):
