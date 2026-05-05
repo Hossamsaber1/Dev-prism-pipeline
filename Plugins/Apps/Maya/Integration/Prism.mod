@@ -1,0 +1,3 @@
++ Prism 1.0.0 PLUGINROOT/Integration
+PRISM_ROOT=PRISMROOT
+MAYA_SHELF_PATH+:=shelves

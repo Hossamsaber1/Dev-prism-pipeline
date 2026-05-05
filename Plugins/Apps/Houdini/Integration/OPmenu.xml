@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<menuDocument>
+    <menu>
+        <separatorItem id="opmenu.capture_sep">
+                <insertAfter>opmenu.outputs_menu</insertAfter>
+            </separatorItem>
+
+        <scriptItem id="opmenu.prism_actions">
+            <insertAfter>opmenu.capture_sep</insertAfter>
+            <label>Prism Actions...</label>
+            <scriptCode><![CDATA[
+import PrismInit
+PrismInit.pcore.appPlugin.onOpmenuActionsTriggered(kwargs)
+            ]]></scriptCode>
+        </scriptItem>
+    </menu>
+</menuDocument>

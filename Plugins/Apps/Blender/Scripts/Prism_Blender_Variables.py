@@ -37,7 +37,7 @@ import os
 
 class Prism_Blender_Variables(object):
     def __init__(self, core, plugin):
-        self.version = "v2.1.0"
+        self.version = "v2.1.1"
         self.pluginName = "Blender"
         self.pluginType = "App"
         self.appShortName = "Bld"

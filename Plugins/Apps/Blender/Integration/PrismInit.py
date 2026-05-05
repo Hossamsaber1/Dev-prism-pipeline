@@ -103,7 +103,7 @@ class PrismSave(bpy.types.Operator):
 
 class PrismSaveComment(bpy.types.Operator):
     bl_idname = "object.prism_savecomment"
-    bl_label = "Save Comment"
+    bl_label = "Save with Comment"
 
     def execute(self, context):
         if platform.system() == "Linux":

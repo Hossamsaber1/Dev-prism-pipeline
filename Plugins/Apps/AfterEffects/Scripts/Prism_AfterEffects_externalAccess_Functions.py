@@ -52,6 +52,7 @@ class Prism_AfterEffects_externalAccess_Functions(object):
             "AfterEffectsStyleSheet"
         )
         self.core.registerStyleSheet(ssheetPath)
+        self.core.registerCallback("getPresetScenes", self.getPresetScenes, plugin=self.plugin)
 
     @err_catcher(name=__name__)
     def getAutobackPath(self, origin):
@@ -72,3 +73,12 @@ class Prism_AfterEffects_externalAccess_Functions(object):
     @err_catcher(name=__name__)
     def copySceneFile(self, origin, origFile, targetPath, mode="copy"):
         pass
+
+    @err_catcher(name=__name__)
+    def getPresetScenes(self, presetScenes):
+        if os.getenv("PRISM_SHOW_DEFAULT_SCENEFILE_PRESETS", "1") != "1":
+            return
+        
+        presetDir = os.path.join(self.pluginDirectory, "Presets")
+        scenes = self.core.entities.getPresetScenesFromFolder(presetDir)
+        presetScenes += scenes

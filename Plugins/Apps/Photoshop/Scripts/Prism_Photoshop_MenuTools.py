@@ -67,6 +67,9 @@ if hasattr(pcore.appPlugin, "psApp") or platform.system() == "Darwin":
         result = pcore.projectBrowser()
     elif sys.argv[2] == "Settings":
         result = pcore.prismSettings()
+    elif sys.argv[2] == "Background":
+        qapp.setQuitOnLastWindowClosed(False)
+        result = True
 
     if len(sys.argv) > 3:
         pcore.appPlugin.openScene(origin=pcore, filepath=sys.argv[3])

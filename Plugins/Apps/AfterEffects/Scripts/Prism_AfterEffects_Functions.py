@@ -37,6 +37,7 @@ import sys
 import socket
 import glob
 import logging
+import copy
 try:
     import psutil
 except:
@@ -90,7 +91,7 @@ class Prism_AfterEffects_Functions(object):
         if "psutil" not in globals():
             return
 
-        if psutil.pid_exists(self.aePid):
+        if self.aePid and psutil.pid_exists(self.aePid):
             self.aeAliveTimer.start(5 * 1000)
         else:
             QApplication.instance().quit()
@@ -379,6 +380,15 @@ class Prism_AfterEffects_Functions(object):
         for sourceDat in sourceData:
             filepath = sourceDat[0]
             self.importMedia(filepath)
+
+    @err_catcher(name=__name__)
+    def sm_getExternalFiles(self, origin):
+        footageItems = self.getFootageFromProject() or []
+        paths = []
+        for footageItem in footageItems:
+            paths.append(footageItem["path"])
+
+        return [paths, []]
 
     @err_catcher(name=__name__)
     def getMediaFromEntities(self, entities, identifier):
@@ -704,20 +714,23 @@ if (app.project && app.project.activeItem && app.project.activeItem instanceof C
             return None
 
     @err_catcher(name=__name__)
-    def setOutputPath(self, entity, identifier, comment="", composition=None, location="global", template="", useAME=False):
+    def setOutputPath(self, entity, identifier, comment="", composition=None, location="global", template="", useAME=False, outputPath=None):
         extension = ".jpg"
         if self.core.getConfig("globals", "productTasks", config="project"):
-            entity["department"] = os.getenv("PRISM_AE_DEPARTMENT", "Conform")
-            entity["task"] = os.getenv("PRISM_AE_TASK", "AE")
+            fileName = self.core.getCurrentFileName()
+            context = self.core.getScenefileData(fileName)
+            entity["department"] = os.getenv("PRISM_AE_DEPARTMENT", context.get("department", "Conform"))
+            entity["task"] = os.getenv("PRISM_AE_TASK", context.get("task", "Conform"))
 
-        outputPath = self.core.mediaProducts.generateMediaProductPath(
-            entity=entity,
-            task=identifier,
-            extension=extension,
-            comment=comment,
-            location=location,
-            mediaType="2drenders",
-        )
+        if not outputPath:
+            outputPath = self.core.mediaProducts.generateMediaProductPath(
+                entity=entity,
+                task=identifier,
+                extension=extension,
+                comment=comment,
+                location=location,
+                mediaType="2drenders",
+            )
 
         if not os.path.exists(os.path.dirname(outputPath)):
             try:
@@ -824,6 +837,10 @@ class RenderDlg(QDialog):
         curEntity = self.core.getCurrentScenefileData()
         if curEntity and curEntity.get("type"):
             self.setEntity(curEntity)
+
+        self.core.callback(
+            "onAfterEffectsRenderDlgCreated", args=[self]
+        )
 
     @err_catcher(name=__name__)
     def setupUi(self):
@@ -1030,7 +1047,7 @@ class RenderDlg(QDialog):
             entityName = ""
 
         self.l_entityName.setText(entityName)
-        self.identifiers = self.core.getTaskNames(taskType="2d", context=self.entity, addDepartments=False)
+        self.identifiers = self.core.getTaskNames(taskType="2d", context=copy.deepcopy(self.entity), addDepartments=False)
         self.b_identifier.setVisible(bool(self.identifiers))
         if self.identifiers:
             self.lo_widgets.addWidget(self.e_identifier, 1, 1, 1, 2)
@@ -1079,6 +1096,29 @@ class RenderDlg(QDialog):
         return True
 
     @err_catcher(name=__name__)
+    def saveVersionInfo(self, outputpath):
+        identifier = self.getIdentifier()
+        comment = self.getComment()
+        details = self.entity.copy()
+        if "filename" in details:
+            del details["filename"]
+
+        if "extension" in details:
+            del details["extension"]
+
+        version = self.core.paths.getRenderProductData(outputpath, mediaType="2drenders", isVersionFolder=True).get("version", "")
+        fileName = self.core.getCurrentFileName()
+        details["sourceScene"] = fileName
+        details["identifier"] = identifier
+        details["comment"] = comment
+        details["version"] = version
+        infopath = outputpath
+
+        self.core.saveVersionInfo(
+            filepath=infopath, details=details
+        )
+
+    @err_catcher(name=__name__)
     def buttonClicked(self, button, useAME=False):
         if self.chb_template.isChecked() and hasattr(self, "cb_template"):
             template = self.cb_template.currentText()
@@ -1093,7 +1133,7 @@ class RenderDlg(QDialog):
             comment = self.getComment()
             composition = self.getComposition()
             location = self.getLocation()
-            self.plugin.setOutputPath(
+            outputpath = self.plugin.setOutputPath(
                 entity=self.entity,
                 identifier=identifier,
                 comment=comment,
@@ -1102,6 +1142,7 @@ class RenderDlg(QDialog):
                 template=template,
                 useAME=useAME,
             )
+            self.saveVersionInfo(os.path.dirname(outputpath))
         elif button.text() == "Render":
             if not self.validate():
                 return
@@ -1110,6 +1151,29 @@ class RenderDlg(QDialog):
             comment = self.getComment()
             composition = self.getComposition()
             location = self.getLocation()
+
+            rSettings = {
+                "identifier": identifier,
+                "comment": comment,
+                "composition": composition,
+                "location": location,
+            }
+            kwargs = {
+                "origin": self,
+                "settings": rSettings,
+            }
+            result = self.core.callback("preRender", **kwargs)
+            outputName = None
+            for res in result:
+                if isinstance(res, dict) and res.get("cancel", False):
+                    return [
+                        self.state.text(0)
+                        + " - error - %s" % res.get("details", "preRender hook returned False")
+                    ]
+
+                if res and "outputName" in res:
+                    outputName = res["outputName"]
+
             outputpath = self.plugin.setOutputPath(
                 entity=self.entity,
                 identifier=identifier,
@@ -1117,13 +1181,24 @@ class RenderDlg(QDialog):
                 composition=composition,
                 location=location,
                 template=template,
+                outputPath=outputName,
             )
             if not outputpath:
                 return
 
-            self.plugin.startRender()
+            self.saveVersionInfo(os.path.dirname(outputpath))
+            with self.core.waitPopup(self.core, "Rendering. Please wait..."):
+                result = self.plugin.startRender()
+
+            kwargs = {
+                "settings": rSettings,
+                "outputpath": outputpath,
+                "result": result,
+            }
+
+            self.core.callback("postRender", **kwargs)
             base, ext = os.path.splitext(outputpath)
-            globPath = base.strip("#") + ".*"
+            globPath = base.strip("#") + "*"
             files = glob.glob(globPath)
             if files:
                 msg = "Finished rendering successfully."
@@ -1144,92 +1219,6 @@ class RenderDlg(QDialog):
             self.close()
         else:
             self.close()
-
-
-class EntityDlg(QDialog):
-
-    entitiesSelected = Signal(object)
-
-    def __init__(self, parent):
-        super(EntityDlg, self).__init__()
-        self.parentDlg = parent
-        self.plugin = self.parentDlg.plugin
-        self.core = self.plugin.core
-        self.setupUi()
-
-    @err_catcher(name=__name__)
-    def setupUi(self):
-        title = "Choose Shots"
-
-        self.setWindowTitle(title)
-        self.core.parentWindow(self, parent=self.parentDlg)
-
-        import MediaBrowser
-        self.w_browser = MediaBrowser.MediaBrowser(core=self.core, refresh=False)
-        self.w_browser.w_entities.getPage("Assets").tw_tree.itemDoubleClicked.connect(self.itemDoubleClicked)
-        self.w_browser.w_entities.getPage("Shots").tw_tree.itemDoubleClicked.connect(self.itemDoubleClicked)
-        self.setExpanded(False)
-
-        self.lo_main = QVBoxLayout()
-        self.setLayout(self.lo_main)
-
-        self.bb_main = QDialogButtonBox()
-        self.bb_main.addButton("Select", QDialogButtonBox.AcceptRole)
-        self.bb_main.addButton("Cancel", QDialogButtonBox.RejectRole)
-        self.b_expand = self.bb_main.addButton("▶", QDialogButtonBox.RejectRole)
-        self.b_expand.setToolTip("Expand")
-
-        self.bb_main.clicked.connect(self.buttonClicked)
-
-        self.lo_main.addWidget(self.w_browser)
-        self.lo_main.addWidget(self.bb_main)
-
-    @err_catcher(name=__name__)
-    def itemDoubleClicked(self, item, column):
-        self.buttonClicked("select")
-
-    @err_catcher(name=__name__)
-    def buttonClicked(self, button):
-        if button == "select" or button.text() == "Select":
-            entities = self.w_browser.w_entities.getCurrentData(returnOne=False)
-            if isinstance(entities, dict):
-                entities = [entities]
-
-            validEntities = []
-            for entity in entities:
-                if entity.get("type", "") not in ["asset", "shot"]:
-                    continue
-
-                validEntities.append(entity)
-
-            if not validEntities:
-                msg = "Invalid entity selected."
-                self.core.popup(msg, parent=self)
-                return
-
-            self.entitiesSelected.emit(validEntities)
-        elif button.text() == "▶":
-            self.setExpanded(True)
-            button.setVisible(False)
-            return
-
-        self.close()
-
-    @err_catcher(name=__name__)
-    def setExpanded(self, expand):
-        self.w_browser.w_identifier.setVisible(expand)
-        self.w_browser.w_version.setVisible(expand)
-        self.w_browser.w_preview.setVisible(expand)
-
-        if expand:
-            newwidth = 1200
-            curwidth = self.geometry().width()
-            self.resize(newwidth, self.geometry().height())
-            self.move(self.pos().x()-((newwidth-curwidth)/2), self.pos().y())
-
-    @err_catcher(name=__name__)
-    def sizeHint(self):
-        return QSize(500, 500)
 
 
 class ImportMediaDlg(QDialog):
@@ -1319,7 +1308,7 @@ class ImportMediaDlg(QDialog):
             shotNames.append(shotName)
             taskTypes = ["3d", "2d", "playblast", "external"]
             for taskType in taskTypes:
-                ids = self.core.getTaskNames(taskType=taskType, context=shot, addDepartments=False)
+                ids = self.core.getTaskNames(taskType=taskType, context=copy.deepcopy(shot), addDepartments=False)
                 if taskType == "playblast":
                     ids = [i + " (playblast)" for i in ids if i]
                 elif taskType == "2d":
@@ -1345,7 +1334,7 @@ class ImportMediaDlg(QDialog):
         dlg.w_browser.w_entities.getPage("Shots").tw_tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
         dlg.w_browser.w_entities.tb_entities.removeTab(0)
         dlg.w_browser.w_entities.navigate({"type": "shot"})
-        dlg.w_browser.entered()
+        dlg.w_browser.entered(navData={"type": "shot"})
         dlg.entitiesSelected.connect(self.setShots)
         if self.shots:
             dlg.w_browser.w_entities.navigate(self.shots)

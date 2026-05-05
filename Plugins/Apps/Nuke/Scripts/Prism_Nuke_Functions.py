@@ -90,6 +90,7 @@ class Prism_Nuke_Functions(object):
         self.core.registerCallback(
             "postSaveScene", self.postSaveScene, plugin=self.plugin
         )
+        self.core.registerCallback("postBuildScene", self.postBuildScene, plugin=self.plugin)
         self.core.registerCallback(
             "onProjectBrowserStartup", self.onProjectBrowserStartup, plugin=self.plugin
         )
@@ -109,6 +110,7 @@ class Prism_Nuke_Functions(object):
             self.refreshOcio()
 
         nuke.addOnUserCreate(self.refreshOcio, nodeClass="Root")
+        self.isRenderingFlipbook = False
 
     @err_catcher(name=__name__)
     def startup(self, origin):
@@ -125,8 +127,9 @@ class Prism_Nuke_Functions(object):
             else:
                 nukeQtParent = QWidget()
 
-            origin.messageParent = QWidget()
-            origin.messageParent.setParent(nukeQtParent, Qt.Window)
+            # origin.messageParent = QWidget()
+            # origin.messageParent.setParent(nukeQtParent, Qt.Window)
+            origin.messageParent = nukeQtParent
             if platform.system() != "Windows" and self.core.useOnTop:
                 origin.messageParent.setWindowFlags(
                     origin.messageParent.windowFlags() ^ Qt.WindowStaysOnTopHint
@@ -193,34 +196,33 @@ class Prism_Nuke_Functions(object):
 
         text = text.replace("\\", "/")
         useRel = self.core.getConfig("nuke", "useRelativePaths", dft=False, config="user")
-        if text.startswith(self.core.projectPath.replace("\\", "/")):
-            if os.path.isdir(text):
-                srcs = self.core.media.getImgSources(text)
-            elif os.path.isfile(text):
-                srcs = [text]
-            else:
-                return
+        if os.path.isdir(text):
+            srcs = self.core.media.getImgSources(text)
+        elif os.path.isfile(text):
+            srcs = [text]
+        else:
+            return
 
-            success = False
-            for src in srcs:
-                if os.path.splitext(src)[1] not in self.core.media.supportedFormats:
-                    continue
+        success = False
+        for src in srcs:
+            if os.path.splitext(src)[1] not in self.core.media.supportedFormats:
+                continue
 
-                if "#"*self.core.framePadding not in src:
-                    src = self.core.media.getSequenceFromFilename(src)
+            if "#"*self.core.framePadding not in src:
+                src = self.core.media.getSequenceFromFilename(src)
 
-                if "#"*self.core.framePadding in src:
-                    files = self.core.media.getFilesFromSequence(src)
-                    start, end = self.core.media.getFrameRangeFromSequence(files)
-                    if start and end and start != "?" and end != "?":
-                        src += " %s-%s" % (start, end)
+            if "#"*self.core.framePadding in src:
+                files = self.core.media.getFilesFromSequence(src)
+                start, end = self.core.media.getFrameRangeFromSequence(files)
+                if start and end and start != "?" and end != "?":
+                    src += " %s-%s" % (start, end)
 
-                if useRel:
-                    src = self.makePathRelative(src)
+            if useRel and text.replace("\\", "/").startswith(self.core.projectPath.replace("\\", "/")):
+                src = self.makePathRelative(src)
 
-                read_node = nuke.createNode("Read", inpanel=False)
-                read_node["file"].fromUserText(src)
-                success = True
+            read_node = nuke.createNode("Read", inpanel=False)
+            read_node["file"].fromUserText(src)
+            success = True
             
             if success:
                 return True
@@ -337,7 +339,7 @@ class Prism_Nuke_Functions(object):
     def saveScene(self, origin=None, filepath=None, details={}):
         try:
             if filepath:
-                return nuke.scriptSaveAs(filename=filepath)
+                return nuke.scriptSaveAs(filename=filepath, overwrite=1)
             else:
                 return nuke.scriptSave()
 
@@ -518,6 +520,10 @@ class Prism_Nuke_Functions(object):
         return node.knob("identifier").evaluate()
 
     @err_catcher(name=__name__)
+    def getCommentFromNode(self, node):
+        return node.knob("comment").value()
+
+    @err_catcher(name=__name__)
     def sm_render_fixOutputPath(self, origin, outputName, singleFrame=False, state=None):
         if self.core.getConfig("nuke", "useRelativePaths", dft=False, config="user"):
             outputName = self.makePathRelative(outputName)
@@ -525,7 +531,19 @@ class Prism_Nuke_Functions(object):
         return outputName
 
     @err_catcher(name=__name__)
+    def getRenderVersionFromWriteNode(self, node):
+        version = None
+        if node.knob("autoversion") and not node.knob("autoversion").value():
+            intVersion = node.knob("renderversion").value()
+            version = self.core.versionFormat % intVersion
+
+        return version
+
+    @err_catcher(name=__name__)
     def getOutputPath(self, node, group=None, render=False, updateValues=True, force=False):
+        if self.isRenderingFlipbook:
+            return
+
         if not group:
             group = node
 
@@ -538,7 +556,7 @@ class Prism_Nuke_Functions(object):
 
         try:
             taskName = self.getIdentifierFromNode(group)
-            comment = group.knob("comment").value()
+            comment = self.getCommentFromNode(group)
             fileType = group.knob("file_type").value()
             location = group.knob("location").value()
         except Exception as e:
@@ -548,11 +566,7 @@ class Prism_Nuke_Functions(object):
         if not bool(location.strip()):
             location = "global"
 
-        version = None
-        if group.knob("autoversion") and not group.knob("autoversion").value():
-            intVersion = group.knob("renderversion").value()
-            version = self.core.versionFormat % intVersion
-
+        version = self.getRenderVersionFromWriteNode(group)
         outputName = self.core.getCompositingOut(
             taskName,
             fileType,
@@ -588,7 +602,18 @@ class Prism_Nuke_Functions(object):
             self.core.showFileNotInProjectWarning(title="Warning")
             return
 
-        settings = {"outputName": fileName}
+        if start is None and not self.core.uiAvailable:
+            start = nuke.root().knob("first_frame").value()
+            end = nuke.root().knob("last_frame").value()
+
+        settings = {
+            "outputName": fileName,
+            "node": node,
+            "group": group,
+            "start": start,
+            "end": end,
+            "identifier": taskName,
+        }
         scenefile = self.core.getCurrentFileName()
         kwargs = {
             "state": self,
@@ -600,8 +625,7 @@ class Prism_Nuke_Functions(object):
         for res in result:
             if isinstance(res, dict) and res.get("cancel", False):
                 return [
-                    self.state.text(0)
-                    + " - error - %s" % res.get("details", "preRender hook returned False")
+                    "Nuke Render - error - %s" % res.get("details", "preRender hook returned False")
                 ]
 
         self.core.saveScene(versionUp=False, prismReq=False)
@@ -610,7 +634,7 @@ class Prism_Nuke_Functions(object):
         else:
             nuke.execute(node, start, end)
 
-        self.getOutputPath(node)
+        self.getOutputPath(node, group)
         kwargs = {
             "state": self,
             "scenefile": scenefile,
@@ -683,6 +707,11 @@ class Prism_Nuke_Functions(object):
     @err_catcher(name=__name__)
     def onPreMediaPlayerDragged(self, origin, urlList):
         urlList[:] = [urlList[0]]
+
+    @err_catcher(name=__name__)
+    def newScene(self, force=False):
+        nuke.scriptClear()
+        return True
 
     @err_catcher(name=__name__)
     def openScene(self, origin, filepath, force=False):
@@ -1309,6 +1338,72 @@ class Prism_Nuke_Functions(object):
         self.refreshWriteNodes()
 
     @err_catcher(name=__name__)
+    def postBuildScene(self, **kwargs):
+        self.core.appPlugin.refreshOcio()
+        sbData = self.core.getConfig("sceneBuilding", config="project")
+        details = kwargs["entity"].copy()
+        details["department"] = kwargs["department"]
+        details["task"] = kwargs["task"]
+        if "nuke_load_media" in sbData:
+            if self.core.entities.doesContextMatchTaskFilters(sbData["nuke_load_media"], details):
+                self.buildScene()
+
+    @err_catcher(name=__name__)
+    def buildScene(self):
+        entity = self.core.getCurrentScenefileData()
+        idfs = self.core.mediaProducts.getIdentifiersFromEntity(entity)
+        plates = []
+
+        import fnmatch
+        plateNames = [name.strip().lower() for name in os.getenv("PRISM_NUKE_LOAD_MEDIA", "plate*, light*").split(",")]
+        for idf in idfs:
+            group = (self.core.mediaProducts.getGroupFromIdentifier(idf) or "").lower()
+            idfName = idf["identifier"].lower()
+            valid = False
+            for plateName in plateNames:
+                if fnmatch.fnmatch(group, plateName) or fnmatch.fnmatch(idfName, plateName):
+                    valid = True
+                    break
+
+            if not valid:
+                continue
+
+            version = self.core.mediaProducts.getVersion(entity, idf["identifier"], mediaType=idf.get("mediaType"))
+            if not version:
+                continue
+
+            platePath = self.core.mediaProducts.getFileFromVersion(version, findExisting=True)
+            if platePath:
+                plates.append(platePath)
+
+        readNodes = []
+        for idx, plate in enumerate(plates):
+            readNode = self.core.appPlugin.importMedia(plate)
+            readNode.setXpos(idx * 200)
+            readNode.setYpos(0)
+            readNodes.append(readNode)
+
+        useWritePrism = self.core.getConfig("nuke", "useWritePrism", dft=False, config="user")
+        if useWritePrism:
+            writeType = "WritePrism"
+        else:
+            writeType = "Write"
+
+        writeNode = nuke.createNode(writeType)
+        if readNodes:
+            writeNode.setInput(0, readNodes[0])
+
+        writeNode.setXpos(0)
+        writeNode.setYpos(300)
+        viewers = [node for node in nuke.allNodes() if node.Class() == "Viewer"]
+        if not viewers:
+            viewer = nuke.createNode("Viewer")
+            viewers = [viewer]
+
+        viewers[0].setInput(0, writeNode)
+        viewers[0].setYpos(400)
+
+    @err_catcher(name=__name__)
     def refreshWriteNodes(self):
         for node in nuke.allNodes():
             nodeClass = node.Class()
@@ -1349,6 +1444,7 @@ class Prism_Nuke_Functions(object):
                 idf = self.core.getCurrentScenefileData().get("task")
                 if idf:
                     idfKnob.setValue(idf)
+                    self.getOutputPath(node)
 
         elif nodeClass == "Read" and os.getenv("PRISM_NUKE_READ_ADD_KNOBS", "1") == "1":
             if not node.knob("tab_prism"):
@@ -1462,6 +1558,7 @@ class Prism_Nuke_Functions(object):
             idf = self.core.getCurrentScenefileData().get("task")
             if idf:
                 idfKnob.setValue(idf)
+                self.getOutputPath(nuke.thisNode(), group)
 
         val = group.knob("prevFileName").value()
         if not val or val == "-":
@@ -1627,6 +1724,26 @@ class Prism_Nuke_Functions(object):
             self.core.showFileNotInProjectWarning(title="Warning")
             return
 
+        settings = {
+            "outputName": fileName,
+            "node": node,
+            "group": group,
+            "identifier": taskName,
+        }
+        scenefile = self.core.getCurrentFileName()
+        kwargs = {
+            "state": self,
+            "scenefile": scenefile,
+            "settings": settings,
+        }
+
+        result = self.core.callback("onNukeOpenFarmSubmitter", **kwargs)
+        for res in result:
+            if isinstance(res, dict) and res.get("cancel", False):
+                return [
+                    "Nuke Submitter - error - %s" % res.get("details", "onNukeOpenFarmSubmitter hook returned False")
+                ]
+
         sm = self.core.getStateManager()
         state = sm.createState("ImageRender")
         state.ui.mediaType = "2drenders"
@@ -1714,6 +1831,9 @@ class Prism_Nuke_Functions(object):
             nodes = nuke.selectedNodes()
 
         for node in nodes:
+            if node.Class() == "Write" or node.Class() == "WritePrism":
+                continue
+
             for kname, knob in node.knobs().items():
                 if kname.lower() in file_knob_names or knob.Class() in ("File_Knob", "InputFile_Knob"):
                     try:
@@ -1811,7 +1931,9 @@ class Prism_Nuke_Functions(object):
         flipbook = factory.getApplication(names[0])
 
         fb = PrismRenderedFlipbook(dlg, flipbook)
+        self.isRenderingFlipbook = True
         fb.doFlipbook(path.replace("\\", "/"), self.getCurrentFrame())
+        self.isRenderingFlipbook = False
         pm = self.core.media.getPixmapFromPath(path)
         try:
             os.remove(path)
@@ -2203,14 +2325,11 @@ class Farm_Submitter(QDialog):
         self.state.ui.gb_submit.setChecked(True)
 
         sm = self.core.getStateManager()
-        comment = self.state.ui.group.knob("comment").value()
+        comment = self.plugin.getCommentFromNode(self.state.ui.group)
         sm.e_comment.setText(comment)
-        incrementScene = os.getenv("PRISM_NUKE_SUBMISSION_INCREMENT_SCENE", "1") == "1"
-        version = "next"
-        if self.state.ui.group.knob("autoversion") and not self.state.ui.group.knob("autoversion").value():
-            intVersion = self.state.ui.group.knob("renderversion").value()
-            version = self.core.versionFormat % intVersion
-
+        incrementScene = os.getenv("PRISM_NUKE_SUBMISSION_INCREMENT_SCENE", "0") == "1"
+        versionWarning = os.getenv("PRISM_NUKE_SUBMISSION_VERSION_WARNING", "0") == "1"
+        version = self.plugin.getRenderVersionFromWriteNode(self.state.ui.group) or "next"
         result = sm.publish(
             successPopup=False,
             executeState=True,
@@ -2219,6 +2338,7 @@ class Farm_Submitter(QDialog):
             incrementScene=incrementScene,
             dependencies=self.dependencies,
             useVersion=version,
+            versionWarning=versionWarning,
         )
         prevKnob = self.state.ui.group.knob("prevFileName")
         if prevKnob:
@@ -2684,7 +2804,7 @@ class MediaVersionsDialog(QDialog):
         self.nodeItems = []
         
         # Get all Read nodes in the script
-        readNodes = [node for node in nuke.allNodes(recurseGroups=True) if node.Class() == "Read"]
+        readNodes = [node for node in nuke.allNodes(recurseGroups=True) if node.Class() in ["Read", "DeepRead"]]
         
         if not readNodes:
             self.statusLabel.setText("No Read nodes found in script")

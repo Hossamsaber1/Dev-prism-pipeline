@@ -59,6 +59,15 @@ class Prism_Nuke_externalAccess_Functions(object):
             plugin=self.plugin,
         )
         self.core.registerCallback("getPresetScenes", self.getPresetScenes, plugin=self.plugin)
+        self.core.registerCallback(
+            "preProjectSettingsLoad", self.preProjectSettingsLoad, plugin=self.plugin
+        )
+        self.core.registerCallback(
+            "preProjectSettingsSave", self.preProjectSettingsSave, plugin=self.plugin
+        )
+        self.core.registerCallback(
+            "projectSettings_loadUI", self.projectSettings_loadUI, plugin=self.plugin
+        )
 
     @err_catcher(name=__name__)
     def userSettings_loadUI(self, origin, tab):
@@ -192,3 +201,37 @@ class Prism_Nuke_externalAccess_Functions(object):
         presetDir = os.path.join(self.pluginDirectory, "Presets")
         scenes = self.core.entities.getPresetScenesFromFolder(presetDir)
         presetScenes += scenes
+
+    @err_catcher(name=__name__)
+    def preProjectSettingsLoad(self, origin, settings):
+        if settings:
+            if "sceneBuilding" in settings:
+                if "nuke_load_media" in settings["sceneBuilding"]:
+                    origin.w_nukeLoadMedia.setDftTasks(settings["sceneBuilding"]["nuke_load_media"])
+
+    @err_catcher(name=__name__)
+    def preProjectSettingsSave(self, origin, settings):
+        if "nuke" not in settings:
+            settings["nuke"] = {}
+
+        if "sceneBuilding" not in settings:
+            settings["sceneBuilding"] = {}
+
+        val = origin.w_nukeLoadMedia.dftTasks()
+        settings["sceneBuilding"]["nuke_load_media"] = val
+
+    @err_catcher(name=__name__)
+    def projectSettings_loadUI(self, origin):
+        self.addUiToProjectSettings(origin)
+
+    @err_catcher(name=__name__)
+    def addUiToProjectSettings(self, projectSettings):
+        if not hasattr(projectSettings, "w_sceneBuildingNuke"):
+            projectSettings.w_sceneBuildingNuke = QGroupBox("Nuke")
+            projectSettings.lo_sceneBuildingNuke = QVBoxLayout(projectSettings.w_sceneBuildingNuke)
+            idx = projectSettings.lo_sceneBuilding.count()
+            projectSettings.lo_sceneBuilding.insertWidget(idx - 1, projectSettings.w_sceneBuildingNuke)
+
+        from PrismUtils import ProjectWidgets
+        projectSettings.w_nukeLoadMedia = ProjectWidgets.DefaultSettingItem(projectSettings, "Load Media:")
+        projectSettings.lo_sceneBuildingNuke.addWidget(projectSettings.w_nukeLoadMedia)

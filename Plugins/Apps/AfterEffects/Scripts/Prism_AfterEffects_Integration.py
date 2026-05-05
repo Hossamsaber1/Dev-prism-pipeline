@@ -60,6 +60,12 @@ class Prism_AfterEffects_Integration(object):
         elif platform.system() == "Darwin":
             self.examplePath = os.path.expanduser("~/Library/Application Support/Adobe/CEP/extensions")
 
+        if not os.path.exists(self.examplePath):
+            try:
+                os.makedirs(self.examplePath)
+            except:
+                pass
+
     @err_catcher(name=__name__)
     def getExecutable(self):
         execPath = ""
@@ -167,7 +173,9 @@ class Prism_AfterEffects_Integration(object):
             cmds.append(cmd)
 
             result = self.core.runFileCommands(cmds)
-            self.extractZipWithDates(origAepZip, targetFolder)
+            if result:
+                result = self.extractZipWithDates(origAepZip, targetFolder)
+
             if result is True:
                 return True
             elif result is False:
@@ -188,18 +196,23 @@ class Prism_AfterEffects_Integration(object):
 
     @err_catcher(name=__name__)
     def extractZipWithDates(self, zipPath, extractTo):
-        with zipfile.ZipFile(zipPath, "r") as zipRef:
-            for zipInfo in zipRef.infolist():
-                extractedPath = os.path.join(extractTo, zipInfo.filename)
-                if zipInfo.is_dir():
-                    os.makedirs(extractedPath, exist_ok=True)
-                else:
-                    os.makedirs(os.path.dirname(extractedPath), exist_ok=True)
-                    zipRef.extract(zipInfo, extractTo)
+        try:
+            with zipfile.ZipFile(zipPath, "r") as zipRef:
+                for zipInfo in zipRef.infolist():
+                    extractedPath = os.path.join(extractTo, zipInfo.filename)
+                    if zipInfo.is_dir():
+                        os.makedirs(extractedPath, exist_ok=True)
+                    else:
+                        os.makedirs(os.path.dirname(extractedPath), exist_ok=True)
+                        zipRef.extract(zipInfo, extractTo)
 
-                modTime = zipInfo.date_time
-                timestamp = time.mktime(modTime + (0, 0, -1))
-                os.utime(extractedPath, (timestamp, timestamp))
+                    modTime = zipInfo.date_time
+                    timestamp = time.mktime(modTime + (0, 0, -1))
+                    os.utime(extractedPath, (timestamp, timestamp))
+        except Exception as e:
+            return str(e)
+        else:
+            return True
 
     def removeIntegration(self, installPath):
         try:

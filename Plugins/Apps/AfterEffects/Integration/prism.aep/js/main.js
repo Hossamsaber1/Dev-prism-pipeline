@@ -61,10 +61,13 @@ function onButtonClick(cmd) {
 
 function startProcess(cmdFilePath, cmd) {
     const { spawn } = require('child_process');
-    if ($.os.indexOf("Macintosh") !== -1) {
-        const child = spawn("\"%s\"" % cmdFilePath, [cmd], { shell: true });
+
+    const isWin = process.platform === 'win32';
+
+    if (isWin) {
+        const child = spawn(cmdFilePath, [cmd], { shell: false });
     } else {
-        const child = spawn(cmdFilePath, [cmd], { shell: true });
+        const child = spawn("\"%s\"" % cmdFilePath, [cmd], { shell: true }); // for mac
     }
 
     child.stdout.on('data', (data) => {

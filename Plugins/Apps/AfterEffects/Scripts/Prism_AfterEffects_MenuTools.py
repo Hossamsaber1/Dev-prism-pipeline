@@ -136,6 +136,7 @@ else:
     prismArgs = ["loadProject", "noProjectBrowser", "splash"]
 
 pcore = PrismCore.create(app="AfterEffects", prismArgs=prismArgs)
-result = QMetaObject.invokeMethod(commandHandler, "handleCmd", Qt.QueuedConnection, Q_ARG(str, sys.argv[1]))
+cmd = sys.argv[1] if len(sys.argv) > 1 else "projectBrowser"
+result = QMetaObject.invokeMethod(commandHandler, "handleCmd", Qt.QueuedConnection, Q_ARG(str, cmd))
 if result:
     qapp.exec_()

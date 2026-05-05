@@ -32,6 +32,7 @@
 # along with Prism.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import subprocess
 import sys
 import platform
 import logging
@@ -105,6 +106,23 @@ class Prism_Photoshop_Integration(object):
             return None
 
     def addIntegration(self, installPath):
+        if installPath == "UXP":
+            return self.addUXP()
+        else:
+            return self.appCEP(installPath)
+
+    def addUXP(self):
+        exe = self.getUXPExe()
+        if not os.path.exists(exe):
+            msg = "Unable to find UPI installer agent at path: %s.\nPlease make sure that Adobe Creative Cloud is installed and up to date." % exe
+            self.core.popup(msg, title="Prism Integration")
+            return False
+
+        subprocess.run([exe, "/install", os.path.join(self.pluginDirectory, "Integration", "UXP", "com.prism.photoshop_PS.ccx")], check=True)
+        self.startServer()
+        return "UXP"
+
+    def addCEP(self, installPath):
         try:
             if not os.path.exists(installPath):
                 msg = "Invalid Photoshop path: %s.\nThe path doesn't exist." % installPath
@@ -160,7 +178,6 @@ class Prism_Photoshop_Integration(object):
 
                 cmd = {"type": "writeToFile", "args": [targetFile, initStr]}
                 cmds.append(cmd)
-                import subprocess
 
             if platform.system() == "Windows":
                 result = self.core.runFileCommands(cmds)
@@ -209,6 +226,32 @@ class Prism_Photoshop_Integration(object):
             return False
 
     def removeIntegration(self, installPath):
+        if installPath == "UXP":
+            return self.removeUXPIntegration()
+        else:
+            return self.removeCEP(installPath)
+        
+    def removeUXPIntegration(self):
+        try:
+            exe = self.getUXPExe()
+            if not os.path.exists(exe):
+                msg = "Unable to find UPI installer agent at path: %s.\nPlease make sure that Adobe Creative Cloud is installed and up to date." % exe
+                self.core.popup(msg, title="Prism Integration")
+                return False
+
+            subprocess.run([exe, "/remove", "Prism Pipeline"], check=True)
+            return True
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            msgStr = (
+                "Errors occurred during the removal of the Photoshop UXP integration.\n\n%s\n%s\n%s"
+                % (str(e), exc_type, exc_tb.tb_lineno)
+            )
+            msgStr += "\n\nRunning this application as administrator could solve this problem eventually."
+            self.core.popup(msgStr, title="Prism Integration")
+            return False
+    
+    def removeCEP(self, installPath):
         try:
             for filename in [
                 "Prism - 1 Tools.jsx",
@@ -241,6 +284,10 @@ class Prism_Photoshop_Integration(object):
             pItem.addChild(psItem)
 
             psPaths = self.getPhotoshopPath(single=False) or []
+            uxpExe = self.getUXPExe()
+            if os.path.exists(uxpExe):
+                psPaths.append("UXP")
+
             psCustomItem = QTreeWidgetItem(["Custom"])
             psCustomItem.setToolTip(0, 'e.g. "%s"' % self.examplePath)
             psCustomItem.setToolTip(1, 'e.g. "%s"' % self.examplePath)
@@ -255,7 +302,7 @@ class Prism_Photoshop_Integration(object):
                 psVItem = QTreeWidgetItem([name])
                 psItem.addChild(psVItem)
 
-                if os.path.exists(path):
+                if os.path.exists(path) or path == "UXP":
                     psVItem.setCheckState(0, Qt.Checked)
                     psVItem.setText(1, path)
                     psVItem.setToolTip(0, path)
@@ -285,8 +332,10 @@ class Prism_Photoshop_Integration(object):
 
             for idx in range(photoshopItem.childCount()):
                 item = photoshopItem.child(idx)
-                if item.checkState(0) == Qt.Checked and os.path.exists(item.text(1)):
-                    psPaths.append(item.text(1))
+                path = item.text(1)
+                valid = os.path.exists(path) or path == "UXP"
+                if item.checkState(0) == Qt.Checked and valid:
+                    psPaths.append(path)
 
             for path in psPaths:
                 result["Photoshop integration"] = self.core.integration.addIntegration(

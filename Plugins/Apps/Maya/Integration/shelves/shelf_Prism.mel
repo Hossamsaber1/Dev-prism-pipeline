@@ -1,0 +1,291 @@
+global proc shelf_Prism () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Saves the current file to a new version" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_save" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismSave.png" 
+        -image1 "prismSave.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.saveScene()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -doubleClickCommand "pcore.saveWithComment()" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Save with comment" ( "pcore.saveWithComment()" )
+        -mip 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Opens the Project Browser" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_browser" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismBrowser.png" 
+        -image1 "prismBrowser.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.projectBrowser()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Import" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_import" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismImport.png" 
+        -image1 "prismImport.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.getPlugin(\"Maya\").onShelfClickedImport()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -doubleClickCommand "pcore.getPlugin(\"Maya\").onShelfClickedImport(doubleclick=True)" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Import Connected Assets..." ( "pcore.getPlugin(\"Maya\").onShelfClickedImportConnectedAssets()" )
+        -mip 0
+        -mi "Import Connected Assets (quiet)" ( "pcore.getPlugin(\"Maya\").onShelfClickedImportConnectedAssets(quiet=True)" )
+        -mip 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Export" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_export" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismExport.png" 
+        -image1 "prismExport.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.getPlugin(\"Maya\").onShelfClickedExport()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -doubleClickCommand "pcore.getPlugin(\"Maya\").onShelfClickedExport(doubleclick=True)" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Instant Export" ( "pcore.getPlugin(\"Maya\").onShelfClickedExport(doubleclick=True)" )
+        -mip 0
+        -mi "Export Multiple Assets..." ( "pcore.getPlugin(\"Maya\").openBatchExport()" )
+        -mip 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Playblast" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_playblast" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismPlayblast.png" 
+        -image1 "prismPlayblast.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.getPlugin(\"Maya\").onShelfClickedPlayblast()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -doubleClickCommand "pcore.getPlugin(\"Maya\").onShelfClickedPlayblast(doubleclick=True)" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Instant Playblast" ( "pcore.getPlugin(\"Maya\").onShelfClickedPlayblast(doubleclick=True)" )
+        -mip 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Render" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_render" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismRender.png" 
+        -image1 "prismRender.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.getPlugin(\"Maya\").onShelfClickedRender()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -doubleClickCommand "pcore.getPlugin(\"Maya\").onShelfClickedRender(doubleclick=True)" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Instant Render" ( "pcore.getPlugin(\"Maya\").onShelfClickedRender(doubleclick=True)" )
+        -mip 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Opens the State Manager" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_manager" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismStates.png" 
+        -image1 "prismStates.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.stateManager()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Opens the Prism settings" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "prism_settings" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "prismSettings.png" 
+        -image1 "prismSettings.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "try:\n\tpcore.prismSettings()\nexcept:\n\ttry:\n\t\tfrom PySide6.QtWidgets import *\n\texcept:\n\t\tfrom PySide2.QtWidgets import *\n\tmsg = QMessageBox(QMessageBox.Warning, \"Prism Warning\", \"Failed to load Prism.\")\n\tmsg.addButton(\"Details\", QMessageBox.YesRole)\n\tmsg.addButton(\"Close\", QMessageBox.RejectRole)\n\tmsg.exec_()\n\tbutton = msg.clickedButton()\n\tif button and button.text() == \"Details\":\n\t\ttry:\n\t\t\timport PrismInit\n\t\t\tprismInitLoaded = True\n\t\texcept Exception as e:\n\t\t\tprismInitError = e\n\t\t\tprismInitLoaded = False\n\n\t\ttry:\n\t\t\tpcoreTest = PrismInit.prismInit(prismArgs=[\"noUI\"])\n\t\t\tprismLoaded = bool(pcoreTest)\n\t\texcept Exception as e:\n\t\t\tprismError = e\n\t\t\tprismLoaded = False\n\n\t\tif not prismInitLoaded:\n\t\t\timport pkgutil\n\t\t\tpkg = pkgutil.get_loader(\"PrismInit\")\n\t\t\tif not pkg:\n\t\t\t\tsolution = \"No PrismInit.py found. Add the Prism integration to Maya in the standalone Prism User Settings window.\"\n\t\t\telse:\n\t\t\t\tsolution = \"Failed to load this file:\\n\\n%s\\n\\nError:\\n\\n%s\" % (pkg.path, userSetupError)\n\t\telif not prismLoaded:\n\t\t\tsolution = \"Prism encountered an error. Please contact the support.\\n\\n%s\" % (prismError)\n\t\telse:\n\t\t\tsolution = \"\"\"No problem with Prism could be detected.\n\nMake sure that the userSetup.py file in your Maya user preferences doesn't contain errors.\nYou can check the Maya Output Window for errors and remove all non Prism code from the userSetup.py file.\n\nIf the problems persists please contact the support.\"\"\"\n\n\t\tQMessageBox.information(None, \"Prism\", solution)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 

@@ -172,16 +172,35 @@ class Import_SceneData(QDialog):
 
     @err_catcher(name=__name__)
     def updateData(self, validNodes):
-        if validNodes and validNodes[0]["library"]:
+        updated = False
+        libs = []
+        if validNodes:
             for i in validNodes:
-                oldLib = self.plugin.getObject(i).library.filepath
-                self.plugin.getObject(i).library.filepath = self.scenepath
-                for node in self.state.nodes:
-                    if node["library"] == oldLib:
-                        node["library"] = self.scenepath
+                obj = self.plugin.getObject(i)
+                if obj.library and obj.library not in libs:
+                    updated = True
+                    oldLib = obj.library.filepath
+                    obj.library.filepath = self.scenepath
+                    libs.append(obj.library)
+                    for node in self.state.nodes:
+                        if node["library"] == oldLib:
+                            node["library"] = self.scenepath
 
-            self.plugin.getObject(i).library.reload()
-            return True
+                elif obj.override_library and obj.override_library.reference:
+                    lib = obj.override_library.reference.library
+                    if lib:
+                        updated = True
+                        oldLib = lib.filepath
+                        libs.append(lib)
+                        lib.filepath = self.scenepath
+                        for node in self.state.nodes:
+                            if node["library"] == oldLib:
+                                node["library"] = self.scenepath
+
+            for lib in libs:
+                lib.reload()
+        
+        return updated
 
     @err_catcher(name=__name__)
     def importData(self):

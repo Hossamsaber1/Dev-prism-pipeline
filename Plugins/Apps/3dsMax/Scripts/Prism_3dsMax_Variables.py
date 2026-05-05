@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 #
 ####################################################
@@ -38,7 +37,7 @@ import os
 
 class Prism_3dsMax_Variables(object):
     def __init__(self, core, plugin):
-        self.version = "v2.1.0"
+        self.version = "v2.1.1"
         self.pluginName = "3dsMax"
         self.pluginType = "App"
         self.appShortName = "Max"
@@ -46,7 +45,7 @@ class Prism_3dsMax_Variables(object):
         self.hasQtParent = True
         self.sceneFormats = [".max"]
         self.appSpecificFormats = self.sceneFormats
-        self.outputFormats = [".max", ".abc", ".obj", ".fbx", "ShotCam"]
+        self.outputFormats = [".abc", ".obj", ".fbx", ".max", "ShotCam"]
         self.appColor = [0, 170, 170]
         self.renderPasses = {
             "max_scanline": [

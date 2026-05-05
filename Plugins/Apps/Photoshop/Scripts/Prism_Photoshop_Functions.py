@@ -494,7 +494,7 @@ class Prism_Photoshop_Functions(object):
         self.dlg_tools.setLayout(lo_tools)
 
         b_saveVersion = QPushButton("Save Version")
-        b_saveComment = QPushButton("Save Extended")
+        b_saveComment = QPushButton("Save with Comment")
         b_export = QPushButton("Export")
         b_projectBrowser = QPushButton("Project Browser")
         b_settings = QPushButton("Settings")
@@ -525,6 +525,12 @@ class Prism_Photoshop_Functions(object):
             return False
 
         if not self.core.users.ensureUser():
+            return False
+
+        curfile = self.core.getCurrentFileName()
+        filepath = curfile.replace("\\", "/")
+        if not filepath:
+            self.core.showFileNotInProjectWarning()
             return False
 
         curfile = self.core.getCurrentFileName()

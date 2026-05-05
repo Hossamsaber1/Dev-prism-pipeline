@@ -325,7 +325,7 @@ class Prism_Blender_Functions(object):
         else:
             curlayer = bpy.context.window_manager.windows[0].view_layer
             if obj.bl_rna.identifier.upper() == "COLLECTION":
-                self.selectObjects(obj.all_objects)
+                self.selectObjects(obj.all_objects, quiet=quiet)
             else:
                 if obj not in list(curlayer.objects):
                     obj_layer = None
@@ -429,7 +429,7 @@ class Prism_Blender_Functions(object):
             for i in origin.lw_objects.selectedItems():
                 node = origin.nodes[origin.lw_objects.row(i)]
                 if self.getObject(node):
-                    self.selectObject(self.getObject(node))
+                    self.selectObject(self.getObject(node), quiet=True)
 
     @err_catcher(name=__name__)
     def isNodeValid(self, origin, node):
@@ -850,7 +850,7 @@ class Prism_Blender_Functions(object):
         op = {"name": "save", "label": "Save Version", "code": "import PrismInit\nif platform.system() == \"Linux\":\n    PrismInit.pcore.saveScene()\n    for i in QApplication.topLevelWidgets():\n        if i.isVisible():\n            qApp.exec_()\n            break\nelse:\n    PrismInit.pcore.saveScene()"}
         options.append(op)
 
-        op = {"name": "savecomment", "label": "Save Extended", "code": "import PrismInit\nif platform.system() == \"Linux\":\n    PrismInit.pcore.saveWithComment()\n    for i in QApplication.topLevelWidgets():\n        if i.isVisible():\n            qApp.exec_()\n            break\nelse:\n    PrismInit.pcore.saveWithComment()"}
+        op = {"name": "savecomment", "label": "Save with Comment", "code": "import PrismInit\nif platform.system() == \"Linux\":\n    PrismInit.pcore.saveWithComment()\n    for i in QApplication.topLevelWidgets():\n        if i.isVisible():\n            qApp.exec_()\n            break\nelse:\n    PrismInit.pcore.saveWithComment()"}
         options.append(op)
 
         op = {"name": "browser", "label": "Project Browser", "code": "import PrismInit\nif platform.system() == \"Linux\":\n    PrismInit.pcore.projectBrowser()\n    qApp.exec_()\nelse:\n    PrismInit.pcore.projectBrowser()"}
@@ -1023,11 +1023,22 @@ class Prism_Blender_Functions(object):
                     connections.append(i.links[0])
 
             if outNode.format.file_format == "OPEN_EXR_MULTILAYER":
-                for _input in outNode.layer_slots:
+                if hasattr(outNode, "layer_slots"):  # removed in Blender 5.0
+                    _inputs = outNode.layer_slots
+                else:
+                    _inputs = outNode.file_output_items
+
+                for _input in _inputs:
                     nodePassNames.append(_input.name)
             else:
-                for _input in outNode.file_slots:
-                    nodePassNames.append(os.path.basename(_input.path))
+                if hasattr(outNode, "file_slots"):  # removed in Blender 5.0
+                    _inputs = outNode.file_slots
+                    for _input in _inputs:
+                        nodePassNames.append(os.path.basename(_input.path))
+                else:
+                    _inputs = outNode.file_output_items
+                    for _input in _inputs:
+                        nodePassNames.append(_input.name)
 
             if not layername and connections:
                 if connections[0].from_node.type == "R_LAYERS":
@@ -1107,15 +1118,31 @@ class Prism_Blender_Functions(object):
             ]
             for outNode in outNodes:
                 if outNode.format.file_format == "OPEN_EXR_MULTILAYER":
-                    for idx, layer_slot in enumerate(outNode.layer_slots):
-                        if layer_slot.name == aovName:
-                            outNode.inputs.remove(outNode.inputs[idx])
-                            return
+                    if hasattr(outNode, "layer_slots"):  # removed in Blender 5.0
+                        _inputs = outNode.layer_slots
+                        for idx, layer_slot in enumerate(_inputs):
+                            if layer_slot.name == aovName:
+                                outNode.inputs.remove(outNode.inputs[idx])
+                                return
+                    else:
+                        _inputs = outNode.file_output_items
+                        for idx, layer_slot in enumerate(_inputs):
+                            if layer_slot.name == aovName:
+                                outNode.file_output_items.remove(outNode.file_output_items[idx])
+                                return
+
                 else:
-                    for idx, file_slot in enumerate(outNode.file_slots):
-                        if os.path.basename(file_slot.path) == aovName:
-                            outNode.inputs.remove(outNode.inputs[idx])
-                            return
+                    if hasattr(outNode, "file_slots"):  # removed in Blender 5.0
+                        for idx, file_slot in enumerate(outNode.file_slots):
+                            if os.path.basename(file_slot.path) == aovName:
+                                outNode.inputs.remove(outNode.inputs[idx])
+                                return
+                    else:
+                        _inputs = outNode.file_output_items
+                        for idx, layer_slot in enumerate(_inputs):
+                            if layer_slot.name == aovName:
+                                outNode.file_output_items.remove(outNode.file_output_items[idx])
+                                return
 
         else:
             self.enableViewLayerAOV(aovName, enable=False)
@@ -1151,7 +1178,11 @@ class Prism_Blender_Functions(object):
             if not nodeAOVs and self.getViewLayerAOVs() and bpy.app.version < (5, 0, 0):
                 fileFormat = "OPEN_EXR_MULTILAYER"
             else:
-                fileFormat = "OPEN_EXR"
+                if bpy.app.version >= (5, 0, 0) and bpy.context.scene.render.image_settings.file_format == "OPEN_EXR_MULTILAYER":
+                    fileFormat = "OPEN_EXR_MULTILAYER"
+                else:
+                    fileFormat = "OPEN_EXR"
+
         elif imgFormat == ".png":
             fileFormat = "PNG"
         elif imgFormat == ".jpg":
@@ -1168,7 +1199,9 @@ class Prism_Blender_Functions(object):
         bpy.context.scene.render.filepath = rSettings["outputName"]
         bpy.context.scene.render.image_settings.file_format = fileFormat
         bpy.context.scene.render.use_overwrite = True
-        bpy.context.scene.render.use_file_extension = False
+        if bpy.app.version < (5, 0, 0):
+            bpy.context.scene.render.use_file_extension = False
+
         bpy.context.scene.render.resolution_percentage = 100
         bpy.context.scene.camera = bpy.context.scene.objects[origin.curCam]
 
@@ -1225,11 +1258,25 @@ class Prism_Blender_Functions(object):
                             filename + ext,
                         )
                     )
-                    m.base_path = newOutputPath
+                    if bpy.app.version < (5, 0, 0):
+                        m.base_path = newOutputPath
+                    else:
+                        m.directory = os.path.dirname(newOutputPath)
+                        m.file_name = os.path.basename(newOutputPath)
+
                     if connections:
                         usePasses = True
                 else:
-                    m.base_path = os.path.dirname(rSettings["outputName"])
+                    if bpy.app.version < (5, 0, 0):
+                        m.base_path = os.path.dirname(rSettings["outputName"])
+                    else:
+                        layername = ""
+                        if len(outNodes) > 1:
+                            layername = m.label or m.name
+
+                        m.directory = os.path.dirname(os.path.dirname(rSettings["outputName"])) + "/" + (layername or "beauty")
+                        m.file_name = os.path.splitext(os.path.basename(rSettings["outputName"]))[0].replace("beauty", layername).strip("#._") + "."
+
                     for i, idx in connections:
                         passName = i.from_socket.name
                         layername = ""
@@ -1242,8 +1289,14 @@ class Prism_Blender_Functions(object):
                             if hasattr(i.from_node, "label") and i.from_node.label != "":
                                 passName = i.from_node.label
 
-                        curSlot = m.file_slots[idx]
-                        if curSlot.use_node_format:
+                        if hasattr(m, "file_slots"):  # removed in Blender 5.0
+                            curSlot = m.file_slots[idx]
+                            useNodeFormat = curSlot.use_node_format
+                        else:
+                            curSlot = m.file_output_items[idx]
+                            useNodeFormat = not curSlot.override_node_format
+
+                        if useNodeFormat:
                             ext = nodeExt
                         else:
                             ext = extensions[curSlot.format.file_format]
@@ -1261,17 +1314,22 @@ class Prism_Blender_Functions(object):
                         else:
                             filename = filename.replace("beauty", passName)
 
-                        curSlot.path = "../%s/%s" % (
-                            passName, filename + ext
-                        )
-                        newOutputPath = os.path.abspath(
-                            os.path.join(
-                                rSettings["outputName"],
-                                "../..",
-                                passName,
-                                filename + ext,
+                        if bpy.app.version < (5, 0, 0):
+                            curSlot.path = "../%s/%s" % (
+                                passName, filename + ext
                             )
-                        )
+
+                            newOutputPath = os.path.abspath(
+                                os.path.join(
+                                    rSettings["outputName"],
+                                    "../..",
+                                    passName,
+                                    filename + ext,
+                                )
+                            )
+                        else:
+                            newOutputPath = m.directory + "/" + m.file_name + passName + ext
+
                         usePasses = True
 
         if usePasses:
@@ -1779,7 +1837,12 @@ class Prism_Blender_Functions(object):
         if type(obj) == str:
             node = {"name": obj, "library": ""}
         else:
-            node = {"name": obj.name, "library": getattr(obj.library, "filepath", "")}
+            lib = obj.library
+            if not lib and obj.override_library and obj.override_library.reference:
+                lib = obj.override_library.reference.library
+
+            libpath = getattr(lib, "filepath", "")
+            node = {"name": obj.name, "library": libpath}
         return node
 
     @err_catcher(name=__name__)
@@ -1788,16 +1851,20 @@ class Prism_Blender_Functions(object):
             node = self.getNode(node)
 
         for obj in bpy.data.objects:
+            libMatch = getattr(obj.library, "filepath", "") == node["library"]
+            overrideMatch = obj.override_library and obj.override_library.reference and getattr(obj.override_library.reference.library, "filepath", "") == node["library"]
             if (
                 obj.name == node["name"]
-                and getattr(obj.library, "filepath", "") == node["library"]
+                and (libMatch or overrideMatch)
             ):
                 return obj
 
         for obj in bpy.data.collections:
+            libMatch = getattr(obj.library, "filepath", "") == node["library"]
+            overrideMatch = obj.override_library and obj.override_library.reference and getattr(obj.override_library.reference.library, "filepath", "") == node["library"]
             if (
                 obj.name == node["name"]
-                and getattr(obj.library, "filepath", "") == node["library"]
+                and (libMatch or overrideMatch)
             ):
                 return obj
 
@@ -1978,6 +2045,9 @@ class Prism_Blender_Functions(object):
 
     @err_catcher(name=__name__)
     def captureViewportThumbnail(self):
+        if bpy.app.background:
+            return
+
         path = tempfile.NamedTemporaryFile(suffix=".jpg").name
         if bpy.app.version < (4, 0, 0):
             bpy.ops.screen.screenshot(self.getOverrideContext(), filepath=path)
