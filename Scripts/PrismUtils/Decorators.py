@@ -50,8 +50,23 @@ logger = logging.getLogger(__name__)
 def err_handler(func, name="", plugin=False):
     @wraps(func)
     def func_wrapper(*args, **kwargs):
+        if func.__name__ in ["acquireLicense", "getActiveLicense"]:
+            from qtpy.QtWidgets import QApplication
+            from qtpy.QtCore import QThread
+
+            qapp = QApplication.instance()
+            isGuiThread = qapp and qapp.thread() == QThread.currentThread()
+
+            if not isGuiThread:
+                return None
+
         try:
             return func(*args, **kwargs)
+        except RuntimeError as e:
+            if "MAXScript call is only allowed on Python main thread" in str(e):
+                logger.warning("Ignored MAXScript thread error")
+                return None
+            raise
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
 

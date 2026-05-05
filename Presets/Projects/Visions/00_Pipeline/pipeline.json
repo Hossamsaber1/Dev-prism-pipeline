@@ -341,7 +341,7 @@
     "export_paths": {},
     "environmentVariables": {},
     "render_paths": {
-        "Rendering": "\\\\172.18.20.12\\Rendering"
+        "Rendering": "\\\\172.18.20.12\\Rendering\\@project_name@"
     },
     "deadline": {
         "submitScenes": true,
