@@ -108,6 +108,10 @@ class ExportClass(object):
             outputFormats = getattr(self.core.appPlugin, "outputFormats", [])
 
         self.cb_outType.addItems(outputFormats)
+        defaultOutputType = ".max"
+        idx = self.cb_outType.findText(defaultOutputType)
+        if idx != -1:
+            self.cb_outType.setCurrentIndex(idx)
         self.export_paths = self.core.paths.getExportProductBasePaths()
         self.cb_outPath.addItems(list(self.export_paths.keys()))
         if len(self.export_paths) < 2:
@@ -1060,7 +1064,7 @@ class ExportClass(object):
                 self, startFrame=startFrame, endFrame=endFrame, outputName=outputName
             )
 
-            outputName += ".abc"
+            outputName += ".max"
             self.setLastPath(outputName)
 
             useMaster = self.core.products.getUseMaster()

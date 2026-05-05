@@ -113,6 +113,7 @@ class ImageRenderClass(object):
         self.mediaType = "3drenders"
         self.tasknameRequired = True
         self.outputFormats = [
+            ".tif",
             ".exr",
             ".png",
             ".jpg",

@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 #
 ####################################################
@@ -45,7 +46,7 @@ class Prism_3dsMax_Variables(object):
         self.hasQtParent = True
         self.sceneFormats = [".max"]
         self.appSpecificFormats = self.sceneFormats
-        self.outputFormats = [".abc", ".obj", ".fbx", ".max", "ShotCam"]
+        self.outputFormats = [".max", ".abc", ".obj", ".fbx", "ShotCam"]
         self.appColor = [0, 170, 170]
         self.renderPasses = {
             "max_scanline": [
