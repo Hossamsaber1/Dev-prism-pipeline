@@ -1,0 +1,1 @@
+app.system('python3 "PLUGINROOT/Scripts/Prism_Photoshop_MenuTools.py" "PRISMROOT" SaveComment &')
