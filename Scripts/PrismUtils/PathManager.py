@@ -926,12 +926,7 @@ class PathManager(object):
             render_paths[cp] = raw
 
         for path in render_paths:
-            # Expand environment variables (e.g. %RENDER_ROOT%) so the path
-            # works on any machine that has the variable set, without hardcoding
-            # server IPs or UNC paths in the committed pipeline.json.
-            render_paths[path] = os.path.normpath(
-                os.path.expandvars(render_paths[path])
-            )
+            render_paths[path] = os.path.normpath(render_paths[path])
 
         return render_paths
 
