@@ -57,19 +57,25 @@ class MediaProducts(object):
         self.core = core
 
     @err_catcher(name=__name__)
-    def getSimplifiedMediaBasePath(self, entity, projectPath, mediaType):
-        root = self.core.paths.getSimplifiedOutputRoot(entity, projectPath=projectPath)
+    def getSimplifiedMediaBasePath(self, entity, projectPath, mediaType, location=None):
+        root = self.core.paths.getSimplifiedOutputRoot(
+            entity, projectPath=projectPath, location=location
+        )
         if not root:
             return ""
 
+        # IMPORTANT: When adding a new flat-mode media key, update routing here
+        # AND _flatKeys in Projects.validateFolderStructure()
+        # AND _flatKeys in ProjectSettings.validateFolderWidget()
         if mediaType == "playblasts":
-            return os.path.join(root, "Playblasts")
-        elif mediaType == "2drenders":
-            return os.path.join(root, "Renders", "2dRender")
+            return os.path.join(root, "playblasts")
         elif mediaType == "externalMedia":
-            return os.path.join(root, "Publishes", "external")
+            return os.path.join(root, "external")
         else:
-            return os.path.join(root, "Renders", "3dRender")
+            # Both "3drenders" and "2drenders" share the same renders/ folder.
+            # They are distinguished at the version level by the presence of
+            # AOV subdirectories (3D) vs. files directly in the version folder (2D).
+            return os.path.join(root, "renders")
 
     @err_catcher(name=__name__)
     def getSimplifiedMediaData(self, path, mediaType=None, isVersionFolder=False):
@@ -225,7 +231,7 @@ class MediaProducts(object):
                     "external": "externalMedia",
                 }
                 for label, mediaKey in scanMap.items():
-                    basePath = self.getSimplifiedMediaBasePath(entity, baseProject, mediaKey)
+                    basePath = self.getSimplifiedMediaBasePath(entity, baseProject, mediaKey, location=loc)
                     if not os.path.isdir(basePath):
                         continue
 
@@ -427,7 +433,8 @@ class MediaProducts(object):
                 ctx = context.copy()
                 ctx["project_path"] = locationData[loc]
                 basePath = self.getSimplifiedMediaBasePath(
-                    ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders"
+                    ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders",
+                    location=loc
                 )
                 versionBase = os.path.join(basePath, ctx["identifier"])
                 if not os.path.isdir(versionBase):
@@ -857,7 +864,8 @@ class MediaProducts(object):
 
         if self.core.paths.isSimplifiedArtistWorkflowEnabled():
             baseRoot = self.getSimplifiedMediaBasePath(
-                entity, basePath, context.get("mediaType") or mediaType or "3drenders"
+                entity, basePath, context.get("mediaType") or mediaType or "3drenders",
+                location=location
             )
             versionRoot = os.path.join(baseRoot, task, version)
             if entity.get("type") == "asset":
@@ -950,7 +958,7 @@ class MediaProducts(object):
             key = "playblastFilesShots"
 
         if self.core.paths.isSimplifiedArtistWorkflowEnabled():
-            baseRoot = self.getSimplifiedMediaBasePath(entity, basePath, "playblasts")
+            baseRoot = self.getSimplifiedMediaBasePath(entity, basePath, "playblasts", location=location)
             versionRoot = os.path.join(baseRoot, task, version)
             if entity["type"] == "asset":
                 entityLabel = os.path.basename(entity["asset_path"])
@@ -1013,7 +1021,8 @@ class MediaProducts(object):
                 ctx = context.copy()
                 ctx["project_path"] = locations[loc]
                 basePath = self.getSimplifiedMediaBasePath(
-                    ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders"
+                    ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders",
+                    location=loc
                 )
                 versionBase = os.path.join(basePath, ctx["identifier"])
                 if not os.path.isdir(versionBase):
