@@ -2030,6 +2030,9 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
         # In flat-structure mode the render/playblast folder keys intentionally
         # omit @identifier@.  Strip that requirement before validating so the
         # field doesn't show a false-positive red border.
+        # IMPORTANT: When adding a new flat-mode media key, update _flatKeys here
+        # AND in Projects.validateFolderStructure()
+        # AND in MediaProducts.getSimplifiedMediaBasePath()
         _flatKeys = {"3drenders", "2drenders", "externalMedia", "playblasts"}
         _flatMode = bool(
             self.core.getConfig("globals", "use_flat_structure", config="project")

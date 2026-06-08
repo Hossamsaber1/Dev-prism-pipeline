@@ -77,6 +77,9 @@ class MediaProducts(object):
         if not root:
             return ""
 
+        # IMPORTANT: When adding a new flat-mode media key, update routing here
+        # AND _flatKeys in Projects.validateFolderStructure()
+        # AND _flatKeys in ProjectSettings.validateFolderWidget()
         if mediaType == "playblasts":
             return os.path.join(root, "playblasts")
         elif mediaType == "externalMedia":
