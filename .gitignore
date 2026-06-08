@@ -16,3 +16,10 @@ Tools/
 *.log
 *.tmp
 *.bak
+
+# Claude Code local config (machine-specific)
+.claude/
+
+# Project output folders — never commit rendered output
+Presets/Projects/*/Output/
+Presets/Projects/*/00_Pipeline/Shotinfo/
