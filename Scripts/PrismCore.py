@@ -1865,13 +1865,85 @@ License: GNU LGPL-3.0-or-later<br>
             targetLoc = self.paths.getLocationPath(target)
             if not targetLoc:
                 msg = "Location doesn't exist: \"%s\"" % target
-                self.core.popup(msg)
+                self.popup(msg)
                 return
 
             targetPath = os.path.normpath(targetLoc)
+
+            # When either endpoint is a flat rendering location the relative path
+            # structure differs from global (no Output/<stage> prefix), so a
+            # simple base replacement would produce a structurally wrong path.
+            sourceFl = self.paths._isFlatRenderLocation(source)
+            targetFl = self.paths._isFlatRenderLocation(target)
+            if sourceFl or targetFl:
+                converted = self._convertFlatRenderPath(
+                    path, sourcePath, sourceFl, targetPath, targetFl
+                )
+                if converted is not None:
+                    return converted
+
             path = os.path.normpath(path.replace(sourcePath, targetPath))
 
         return path
+
+    def _convertFlatRenderPath(self, path, sourcePath, sourceFl, targetPath, targetFl):
+        """Entity-aware conversion between flat rendering locations and global/local.
+
+        Flat rendering paths omit the ``Output/<stage>`` prefix that global paths carry,
+        so a simple base-path replacement would produce a structurally invalid result.
+
+        Returns the converted path string, or ``None`` to fall back to simple replacement.
+        """
+        markers = {"renders", "playblasts", "external", "Renders", "Playblasts", "Scenefiles", "Export"}
+        shotStage = self.paths.simplifiedShotStage
+        assetStage = self.paths.simplifiedAssetStage
+
+        if sourceFl and not targetFl:
+            # flat rendering → global/local
+            # rel = e.g. still/cam-02/renders/v0001
+            rel = os.path.relpath(path, sourcePath)
+            parts = rel.split(os.sep)
+            entity_parts = None
+            suffix_parts = []
+            for i, part in enumerate(parts):
+                if part in markers or re.match(r'^v\d+$', part, re.IGNORECASE) or part == "master":
+                    entity_parts = [p for p in parts[:i] if p and p != "."]
+                    suffix_parts = parts[i:]
+                    break
+
+            if entity_parts is None:
+                return None  # can't determine boundary — use simple replacement
+
+            # Determine stage: probe the global project directory.
+            globalPrj = os.path.normpath(self.projectPath)
+            for stage in (shotStage, assetStage):
+                candidate = os.path.join(globalPrj, "Output", stage, *entity_parts)
+                if os.path.isdir(candidate):
+                    return os.path.normpath(
+                        os.path.join(targetPath, "Output", stage, *entity_parts, *suffix_parts)
+                    )
+
+            # Fallback when neither exists on disk yet: assume shot stage.
+            return os.path.normpath(
+                os.path.join(targetPath, "Output", shotStage, *entity_parts, *suffix_parts)
+            )
+
+        elif not sourceFl and targetFl:
+            # global/local → flat rendering
+            # Strip the leading Output/<stage> from the relative path.
+            rel = os.path.relpath(path, sourcePath)
+            parts = rel.split(os.sep)
+            if len(parts) >= 3 and parts[0] == "Output":
+                # parts[1] is the stage name; everything from parts[2] onward is entity + suffix
+                flat_parts = parts[2:]
+                return os.path.normpath(os.path.join(targetPath, *flat_parts))
+            return None  # no Output/<stage> prefix — fall through to simple replacement
+
+        elif sourceFl and targetFl:
+            # flat rendering → flat rendering: same relative structure on both sides
+            return os.path.normpath(path.replace(sourcePath, targetPath))
+
+        return None
 
     @err_catcher(name=__name__)
     def getTexturePath(self, location="global"):

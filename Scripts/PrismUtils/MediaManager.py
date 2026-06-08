@@ -280,19 +280,129 @@ class MediaManager(object):
     @err_catcher(name=__name__)
     def getVideoReader(self, filepath):
         if os.stat(filepath).st_size == 0:
-            reader = "Error - empty file: %s" % filepath
-        else:
-            imageio = self.getImageIO()
-            filepath = str(filepath)  # unicode causes errors in Python 2
-            if platform.system() == "Windows":
-                filepath = filepath.lower()
+            return "Error - empty file: %s" % filepath
 
+        filepath = str(filepath)  # unicode causes errors in Python 2
+        if platform.system() == "Windows":
+            filepath = filepath.lower()
+
+        imageio = self.getImageIO()
+        if imageio is not None:
+            # Full imageio path (numpy available)
             try:
-                reader = imageio.get_reader(filepath, "ffmpeg")
+                return imageio.get_reader(filepath, "ffmpeg")
             except Exception as e:
-                reader = "Error - %s" % e
+                return "Error - %s" % e
 
-        return reader
+        # Fallback: imageio_ffmpeg direct reader (works without numpy).
+        # Returns a lightweight wrapper that mimics the imageio reader API
+        # used by getPixmapFromVideoPath / getVideoDuration / getMediaResolution.
+        return self._getImageIOFfmpegReader(filepath)
+
+    def _getImageIOFfmpegReader(self, filepath):
+        """
+        Lightweight video reader built on imageio_ffmpeg.read_frames().
+        Compatible with the imageio reader API used by this module:
+          - reader.get_data(frame_index)  -> bytes  (H*W*3 RGB)
+          - reader.count_frames()         -> int
+          - reader._meta["size"]          -> (width, height)
+          - reader._meta["fps"]           -> float
+        Works without numpy — safe inside 3ds Max / other DCCs whose Python
+        environment does not have numpy installed.
+        """
+        try:
+            import imageio_ffmpeg
+        except ImportError:
+            return "Error - imageio_ffmpeg not available"
+
+        ffmpeg_exe = self.getFFmpeg()
+        # imageio_ffmpeg uses the IMAGEIO_FFMPEG_EXE env var; set it once here.
+        if ffmpeg_exe:
+            os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_exe
+
+        class _IffmpegReader(object):
+            def __init__(self, path):
+                self._path = path
+                self._meta = {}
+                self._frame_count = None
+                self._frames = {}   # frame-index → bytes cache
+                self._probe()
+
+            def _probe(self):
+                """Open a generator to read metadata and cache the first frame."""
+                try:
+                    gen = imageio_ffmpeg.read_frames(
+                        self._path,
+                        pix_fmt="rgb24",
+                    )
+                    meta = next(gen)
+                    self._meta["size"] = meta.get("size", (1, 1))
+                    self._meta["fps"]  = meta.get("fps", 25.0)
+                    self._meta["duration"] = meta.get("duration", 0.0)
+                    raw = next(gen)
+                    self._frames[0] = raw
+                    gen.close()
+                except Exception as e:
+                    logger.debug("_IffmpegReader probe failed: %s" % e)
+
+            def _read_frame(self, frame_index):
+                if frame_index in self._frames:
+                    return self._frames[frame_index]
+                try:
+                    fps = self._meta.get("fps", 25.0) or 25.0
+                    seek_sec = frame_index / fps
+                    gen = imageio_ffmpeg.read_frames(
+                        self._path,
+                        pix_fmt="rgb24",
+                        input_params=["-ss", "%.3f" % seek_sec],
+                    )
+                    next(gen)           # skip meta dict
+                    raw = next(gen)
+                    gen.close()
+                    self._frames[frame_index] = raw
+                    return raw
+                except Exception as e:
+                    logger.debug("_IffmpegReader._read_frame(%d) failed: %s" % (frame_index, e))
+                    w, h = self._meta.get("size", (1, 1))
+                    return b"\x00" * (w * h * 3)
+
+            def get_data(self, index):
+                """Return raw RGB bytes for frame *index* (no numpy needed)."""
+                return self._read_frame(index)
+
+            def count_frames(self):
+                """Return approximate frame count via ffmpeg decode probe."""
+                if self._frame_count is not None:
+                    return self._frame_count
+                _ffmpeg = os.environ.get("IMAGEIO_FFMPEG_EXE", "ffmpeg")
+                try:
+                    import subprocess as _sp, re as _re
+                    # 'nul' on Windows; os.devnull may not work inside subprocess correctly
+                    import os as _os
+                    _null = "nul" if _os.name == "nt" else "/dev/null"
+                    result = _sp.run(
+                        [_ffmpeg, "-i", self._path,
+                         "-map", "v:0", "-c", "copy", "-f", "null", _null],
+                        stderr=_sp.PIPE, stdout=_sp.PIPE,
+                    )
+                    # ffmpeg prints progress lines like "frame=  363 ..." — take the last match
+                    matches = _re.findall(r"frame=\s*(\d+)",
+                                         result.stderr.decode("utf-8", errors="ignore"))
+                    if matches:
+                        self._frame_count = int(matches[-1])
+                        return self._frame_count
+                except Exception:
+                    pass
+                # Estimate from metadata
+                fps = self._meta.get("fps", 25.0) or 25.0
+                dur = self._meta.get("duration", 1.0) or 1.0
+                self._frame_count = max(1, int(fps * dur))
+                return self._frame_count
+
+        try:
+            return _IffmpegReader(filepath)
+        except Exception as e:
+            return "Error - %s" % e
 
     @err_catcher(name=__name__)
     def checkMSVC(self):
@@ -1287,10 +1397,8 @@ nuke.execute(write, %s, %s)
     def playMediaInExternalPlayer(self, path, name=None):
         mediaPlayer = self.getExternalMediaPlayer(name=name)
         progPath = mediaPlayer.get("path") if mediaPlayer else ""
-        if not progPath:
-            self.core.popup("No media player path set in your user settings..")
-            return
 
+        # Resolve the actual file path (handles missing/frame-pattern paths)
         if not os.path.exists(path):
             base, ext = os.path.splitext(path)
             pattern = base.strip(".#") + ".*" + ext
@@ -1298,9 +1406,23 @@ nuke.execute(write, %s, %s)
             if not paths:
                 logger.warning("media filepath doesn't exist: %s" % path)
                 return
-
-            if not mediaPlayer.get("framePattern"):
+            if not (mediaPlayer and mediaPlayer.get("framePattern")):
                 path = paths[0]
+
+        if not progPath:
+            # No external player configured — open with the OS default application.
+            # This mirrors the fallback behaviour in MediaBrowser.compare().
+            logger.debug("no external media player configured; using OS default for: %s" % path)
+            try:
+                if platform.system() == "Windows":
+                    os.startfile(os.path.normpath(path))
+                elif platform.system() == "Darwin":
+                    subprocess.Popen(["open", path])
+                else:
+                    subprocess.Popen(["xdg-open", path])
+            except Exception as e:
+                self.core.popup("Could not open the file with the default application:\n%s" % e)
+            return
 
         comd = [progPath, path]
         if platform.system() == "Darwin" and progPath.endswith(".app"):

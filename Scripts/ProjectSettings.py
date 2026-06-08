@@ -825,11 +825,11 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
 
         if checked:
             if os.getenv("PRISM_USE_DEPARTMENTS_FOR_PRODUCTS", "1") == "1":
-                template = "@entity_path@/Renders/@department@/@task@/3dRender/@identifier@"
+                template = "@entity_path@"
             else:
-                template = "@entity_path@/Renders/@task@/3dRender/@identifier@"
+                template = "@entity_path@"
         else:
-            template = "@entity_path@/Renders/3dRender/@identifier@"
+            template = "@entity_path@"
 
         for widget in self.folderStructureWidgets:
             if widget["key"] == "3drenders":
@@ -848,11 +848,11 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
 
         if checked:
             if os.getenv("PRISM_USE_DEPARTMENTS_FOR_PRODUCTS", "1") == "1":
-                template = "@entity_path@/Renders/@department@/@task@/2dRender/@identifier@"
+                template = "@entity_path@"
             else:
-                template = "@entity_path@/Renders/@task@/2dRender/@identifier@"
+                template = "@entity_path@"
         else:
-            template = "@entity_path@/Renders/2dRender/@identifier@"
+            template = "@entity_path@"
 
         for widget in self.folderStructureWidgets:
             if widget["key"] == "2drenders":
@@ -871,11 +871,11 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
 
         if checked:
             if os.getenv("PRISM_USE_DEPARTMENTS_FOR_PRODUCTS", "1") == "1":
-                template = "@entity_path@/Renders/@department@/@task@/external/@identifier@"
+                template = "@entity_path@"
             else:
-                template = "@entity_path@/Renders/@task@/external/@identifier@"
+                template = "@entity_path@"
         else:
-            template = "@entity_path@/Renders/external/@identifier@"
+            template = "@entity_path@"
 
         for widget in self.folderStructureWidgets:
             if widget["key"] == "externalMedia":
@@ -894,11 +894,11 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
 
         if checked:
             if os.getenv("PRISM_USE_DEPARTMENTS_FOR_PRODUCTS", "1") == "1":
-                template = "@entity_path@/Renders/@department@/@task@/Playblasts/@identifier@"
+                template = "@entity_path@"
             else:
-                template = "@entity_path@/Renders/@task@/Playblasts/@identifier@"
+                template = "@entity_path@"
         else:
-            template = "@entity_path@/Playblasts/@identifier@"
+            template = "@entity_path@"
 
         for widget in self.folderStructureWidgets:
             if widget["key"] == "playblasts":
