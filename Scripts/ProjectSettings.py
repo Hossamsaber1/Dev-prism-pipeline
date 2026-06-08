@@ -1023,13 +1023,15 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
 
     @err_catcher(name=__name__)
     def isValidStructure(self, structure):
-        for key in structure:
-            if (
-                self.core.projects.validateFolderKey(structure[key]["value"], structure[key])
-                is not True
-            ):
-                logger.debug("invalid key: %s" % key)
-                return False
+        # Delegate to validateFolderStructure which already handles flat-mode
+        # (strips @identifier@ requirement for render/playblast keys when
+        # use_flat_structure = true in the project config).
+        result = self.core.projects.validateFolderStructure(structure)
+        if result is not True:
+            for key in result:
+                if result[key]:
+                    logger.debug("invalid key: %s — %s" % (key, result[key]))
+            return False
 
         return True
 
@@ -2024,6 +2026,22 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
     def validateFolderWidget(self, widget):
         path = widget.text()
         item = widget.helpWidget.item
+
+        # In flat-structure mode the render/playblast folder keys intentionally
+        # omit @identifier@.  Strip that requirement before validating so the
+        # field doesn't show a false-positive red border.
+        _flatKeys = {"3drenders", "2drenders", "externalMedia", "playblasts"}
+        _flatMode = bool(
+            self.core.getConfig("globals", "use_flat_structure", config="project")
+        )
+        widgetKey = getattr(widget.helpWidget, "key", None)
+        if _flatMode and widgetKey in _flatKeys:
+            item = dict(item)
+            item["requires"] = [
+                r for r in item.get("requires", [])
+                if r != "identifier" and r != ["identifier"]
+            ]
+
         result = self.core.projects.validateFolderKey(path, item)
         invalidStyle = "border: 2px solid rgb(200, 10, 10)"
 

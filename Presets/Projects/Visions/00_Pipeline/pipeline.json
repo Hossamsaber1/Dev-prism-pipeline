@@ -2,6 +2,7 @@
     "globals": {
         "project_name": "project-002",
         "prism_version": "v2.1.0",
+        "use_flat_structure": true,
         "departments_asset": [],
         "departments_shot": [],
         "taskpresets_asset": [
