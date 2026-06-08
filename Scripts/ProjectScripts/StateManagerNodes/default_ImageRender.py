@@ -107,6 +107,11 @@ class ImageRenderClass(object):
         self.cb_master.addItems(masterItems)
         self.product_paths = self.core.paths.getRenderProductBasePaths()
         self.cb_outPath.addItems(list(self.product_paths.keys()))
+        # Default to "Rendering"; overridden by loadData when opening a saved state.
+        _defaultLoc = self.core.getConfig("globals", "default_render_location", config="project") or "Rendering"
+        _keys = list(self.product_paths.keys())
+        if _defaultLoc in _keys:
+            self.cb_outPath.setCurrentIndex(_keys.index(_defaultLoc))
         if len(self.product_paths) < 2:
             self.w_outPath.setVisible(False)
 
@@ -1354,6 +1359,7 @@ class ImageRenderClass(object):
         details["comment"] = self.getComment()
         details["startframe"] = startFrame
         details["endframe"] = endFrame
+        details["mediaType"] = self.mediaType
         if layer:
             details["layer"] = layer
 

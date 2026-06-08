@@ -1546,10 +1546,27 @@ class Projects(object):
 
     @err_catcher(name=__name__)
     def validateFolderStructure(self, structure):
+        # In flat-structure mode the render/playblast templates intentionally
+        # omit @identifier@ (the flat code bypasses them entirely and scans
+        # the file-system directly).  Strip the identifier requirement so the
+        # validator does not fire a false-positive for those keys.
+        _flatMode = bool(
+            self.core.getConfig("globals", "use_flat_structure", config="project")
+        )
+        _flatKeys = {"3drenders", "2drenders", "externalMedia", "playblasts"}
+
         errors = {}
         for skey in structure:
             item = structure[skey]
             path = item["value"]
+
+            # Build a (possibly patched) copy of the item for validation.
+            if _flatMode and skey in _flatKeys:
+                item = dict(item)
+                item["requires"] = [
+                    r for r in item.get("requires", [])
+                    if r != "identifier" and r != ["identifier"]
+                ]
 
             errors[skey] = []
             r = self.validateFolderKey(path, item)
