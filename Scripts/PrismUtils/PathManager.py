@@ -317,7 +317,9 @@ class PathManager(object):
 
         filename = os.path.basename(path)
         base, ext = self.splitext(filename)
-        versionMatch = re.match(r"^(?P<name>.+)_(?P<version>v\d+)$", base)
+        # Strip optional project_code prefix (e.g. "56_") so "56_Chair_v0001" → "Chair_v0001"
+        stripped_base = re.sub(r'^\d+_', '', base)
+        versionMatch = re.match(r"^(?P<name>.+)_(?P<version>v\d+)$", stripped_base)
         if not versionMatch:
             return {}
 
@@ -538,10 +540,14 @@ class PathManager(object):
             department, context=entity, reason="generate scene path"
         )
         task = self.normalizeTask(task, context=entity, reason="generate scene path")
+        _pname = self.core.projectName or ""
+        _pcode_m = re.match(r'^(\d+)', _pname)
+        _pcode = _pcode_m.group(1) if _pcode_m else ""
         context = entity.copy()
         context.update({
             "project_path": self.core.projectPath,
-            "project_name": self.core.projectName,
+            "project_name": _pname,
+            "project_code": _pcode,
             "department": department,
             "task": task,
             "version": version,
@@ -573,7 +579,9 @@ class PathManager(object):
                     shotLabel = "%s_%s" % (entity["sequence"].replace("\\", "/").split("/")[-1], entity["shot"])
                 name = shotLabel
 
-            filename = "%s_%s%s" % (name, context["version"], extension)
+            pcode = context.get("project_code", "")
+            prefix = "%s_" % pcode if pcode else ""
+            filename = "%s%s_%s%s" % (prefix, name, context["version"], extension)
             scenePath = os.path.join(folder, filename)
             scenePath = self.core.convertPath(scenePath, location)
             logger.debug("Generated simplified scenefile path: %s", scenePath)

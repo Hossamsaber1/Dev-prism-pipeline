@@ -252,10 +252,10 @@
             "value": "@department_path@/@task@"
         },
         "assetScenefiles": {
-            "value": "@task_path@/@asset@_@task@_@version@@extension@"
+            "value": "@task_path@/@project_code@_@asset@_@version@@extension@"
         },
         "shotScenefiles": {
-            "value": "@task_path@/@sequence@-@shot@_@task@_@version@@extension@"
+            "value": "@task_path@/@project_code@_@sequence@-@shot@_@version@@extension@"
         },
         "products": {
             "value": "@entity_path@/Export/@product@"
