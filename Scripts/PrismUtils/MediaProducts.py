@@ -33,6 +33,7 @@
 
 
 import os
+import re
 import sys
 import logging
 import platform
@@ -308,6 +309,9 @@ class MediaProducts(object):
                                 idfPath = os.path.join(legacyBase, idfName)
                                 if not os.path.isdir(idfPath):
                                     continue
+                                # Version folders saved directly under Renders are not identifiers.
+                                if re.match(r'^v\d+', idfName, re.IGNORECASE):
+                                    continue
                                 d = entity.copy()
                                 d["project_path"] = baseProject
                                 d["identifier"] = idfName
@@ -326,6 +330,10 @@ class MediaProducts(object):
                         for idfName in sorted(os.listdir(legacyPbRoot)):
                             idfPath = os.path.join(legacyPbRoot, idfName)
                             if not os.path.isdir(idfPath):
+                                continue
+                            # Version folders (v0001, v0002...) saved directly under Playblasts
+                            # are not identifiers — skip them to avoid wrong UI grouping.
+                            if re.match(r'^v\d+', idfName, re.IGNORECASE):
                                 continue
                             d = entity.copy()
                             d["project_path"] = baseProject
