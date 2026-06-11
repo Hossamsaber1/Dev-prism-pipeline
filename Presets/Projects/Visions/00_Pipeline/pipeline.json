@@ -242,9 +242,6 @@
         "shots": {
             "value": "@sequence_path@/@shot@"
         },
-        "textures": {
-            "value": "@project_path@"
-        },
         "departments": {
             "value": "@entity_path@/Scenefiles/@department@"
         },
@@ -271,9 +268,6 @@
         },
         "3drenders": {
             "value": "@entity_path@/Renders/3dRender/@identifier@"
-        },
-        "2drenders": {
-            "value": "@entity_path@/Renders/2dRender/@identifier@"
         },
         "externalMedia": {
             "value": "@entity_path@/Renders/external/@identifier@"
