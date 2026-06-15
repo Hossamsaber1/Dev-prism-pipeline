@@ -33,6 +33,7 @@
 
 
 import os
+import re
 import sys
 import logging
 import platform
@@ -52,15 +53,28 @@ from PrismUtils.Decorators import err_catcher
 logger = logging.getLogger(__name__)
 
 
+def _legacy_dir_exists(path):
+    """
+    Returns True only when the directory exists AND its basename matches
+    with exact case.  Necessary on Windows where os.path.isdir() is
+    case-insensitive — without this, the legacy shim would mistake the new
+    lowercase 'renders/'/'playblasts/' folders for the old capital-letter
+    'Renders/'/'Playblasts/' folders and treat version folders as identifiers.
+    """
+    parent, name = os.path.split(path)
+    try:
+        return name in os.listdir(parent)
+    except OSError:
+        return False
+
+
 class MediaProducts(object):
     def __init__(self, core):
         self.core = core
 
     @err_catcher(name=__name__)
     def getSimplifiedMediaBasePath(self, entity, projectPath, mediaType, location=None):
-        root = self.core.paths.getSimplifiedOutputRoot(
-            entity, projectPath=projectPath, location=location
-        )
+        root = self.core.paths.getSimplifiedOutputRoot(entity, projectPath=projectPath, location=location)
         if not root:
             return ""
 
@@ -97,17 +111,19 @@ class MediaProducts(object):
             relPath = os.path.relpath(globalPath, basePath)
             parts = relPath.split(os.sep)
             if os.path.splitext(parts[-1])[1]:
-                if len(parts) < 3:
-                    continue
-
-                identifier, version = parts[0], parts[1]
-                filename = parts[-1]
-                _, extension = self.core.paths.splitext(filename)
-            else:
                 if len(parts) < 2:
                     continue
 
-                identifier, version = parts[0], parts[1]
+                identifier = "media"
+                version = parts[0]
+                filename = parts[-1]
+                _, extension = self.core.paths.splitext(filename)
+            else:
+                if len(parts) < 1:
+                    continue
+
+                identifier = "media"
+                version = parts[0]
                 extension = ""
 
             data = entityData.copy()
@@ -128,27 +144,32 @@ class MediaProducts(object):
 
     @err_catcher(name=__name__)
     def createExternalMedia(self, filepath, entity, identifier, version, action="copy", location="global"):
-        if entity["type"] == "asset":
-            key = "renderFilesAssets"
-        elif entity["type"] == "shot":
-            key = "renderFilesShots"
-        else:
+        if entity["type"] not in ("asset", "shot"):
             self.core.popup("Invalid entity is selected. Select an asset or a shot and try again.")
             return
 
-        context = entity.copy()
-        context["mediaType"] = "externalMedia"
-        context["identifier"] = identifier
-        context["version"] = version
-        context["aov"] = "rgb"
-        if "comment" not in context:
-            context["comment"] = ""
-
         basePath = self.core.paths.getRenderProductBasePaths()[location]
-        context["project_path"] = basePath
 
-        path = self.core.projects.getResolvedProjectStructurePath(key, context=context)
-        folderpath = os.path.dirname(path)
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            versionBase = self.getSimplifiedMediaBasePath(entity, basePath, "externalMedia", location=location)
+            folderpath = os.path.join(versionBase, version)
+        else:
+            context = entity.copy()
+            context["mediaType"] = "externalMedia"
+            context["identifier"] = identifier
+            context["version"] = version
+            context["aov"] = "rgb"
+            if "comment" not in context:
+                context["comment"] = ""
+            context["project_path"] = basePath
+
+            if entity["type"] == "asset":
+                key = "renderFilesAssets"
+            else:
+                key = "renderFilesShots"
+
+            path = self.core.projects.getResolvedProjectStructurePath(key, context=context)
+            folderpath = os.path.dirname(path)
 
         if not os.path.exists(folderpath):
             os.makedirs(folderpath)
@@ -178,19 +199,22 @@ class MediaProducts(object):
 
     @err_catcher(name=__name__)
     def getExternalPathFromVersion(self, version):
-        if version["type"] == "asset":
-            key = "renderFilesAssets"
-        elif version["type"] == "shot":
-            key = "renderFilesShots"
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            folderpath = version.get("path", "")
+        else:
+            if version["type"] == "asset":
+                key = "renderFilesAssets"
+            elif version["type"] == "shot":
+                key = "renderFilesShots"
 
-        context = version.copy()
-        context["mediaType"] = "externalMedia"
-        context["aov"] = "rgb"
+            context = version.copy()
+            context["mediaType"] = "externalMedia"
+            context["aov"] = "rgb"
 
-        filepath = self.core.projects.getResolvedProjectStructurePath(
-            key, context=context
-        )
-        folderpath = os.path.dirname(filepath)
+            filepath = self.core.projects.getResolvedProjectStructurePath(
+                key, context=context
+            )
+            folderpath = os.path.dirname(filepath)
 
         redirectFile = os.path.join(folderpath, "REDIRECT.txt")
         curLoc = ""
@@ -224,66 +248,174 @@ class MediaProducts(object):
         if self.core.paths.isSimplifiedArtistWorkflowEnabled():
             for loc in searchLocations:
                 baseProject = locationData[loc]
-                scanMap = {
-                    "3d": "3drenders",
-                    "2d": "2drenders",
-                    "playblast": "playblasts",
-                    "external": "externalMedia",
-                }
-                for label, mediaKey in scanMap.items():
+                # Flat structure: one entry per physical folder, named after
+                # the folder.  3D and 2D renders share the same "renders/"
+                # folder so they appear as a single "renders" identifier.
+                # IMPORTANT: the middle value (mediaTypeLabel) must match the
+                # keys MediaBrowser iterates: "3d", "2d", "playblast", "external".
+                folderMap = [
+                    ("renders",    "3d",         "3drenders"),
+                    ("playblasts", "playblast",  "playblasts"),
+                    ("external",   "external",   "externalMedia"),
+                ]
+                # "renders" and "playblasts" are permanent fixed slots —
+                # always visible even before the first render is submitted.
+                # "external" only appears when content already exists on disk.
+                ALWAYS_SHOW = {"renders", "playblasts"}
+
+                for idfName, mediaTypeLabel, mediaKey in folderMap:
                     basePath = self.getSimplifiedMediaBasePath(entity, baseProject, mediaKey, location=loc)
-                    if not os.path.isdir(basePath):
-                        continue
 
-                    for identifier in os.listdir(basePath):
-                        path = os.path.join(basePath, identifier)
-                        if not os.path.isdir(path):
+                    if idfName not in ALWAYS_SHOW:
+                        # Dynamic entry: only show when content exists.
+                        if not os.path.isdir(basePath):
+                            continue
+                        hasVersions = any(
+                            os.path.isdir(os.path.join(basePath, e))
+                            for e in os.listdir(basePath)
+                        )
+                        if not hasVersions:
                             continue
 
-                        data = entity.copy()
-                        data["project_path"] = baseProject
-                        data["identifier"] = identifier
-                        data["displayName"] = self.getDisplayNameForIdentifier(identifier, mediaKey)
-                        data["path"] = path
-                        data["location"] = loc
-                        data["mediaType"] = mediaKey
-                        mediaTypes[label].append(data)
+                    data = entity.copy()
+                    data["project_path"] = baseProject
+                    data["identifier"] = idfName
+                    data["displayName"] = idfName
+                    data["path"] = basePath
+                    data["location"] = loc
+                    data["mediaType"] = mediaKey
+                    mediaTypes[mediaTypeLabel].append(data)
 
-        for loc in searchLocations:
-            for mtype in mediaTypes:
-                context = entity.copy()
-                context["project_path"] = locationData[loc]
-                if mtype == "3d":
-                    key = "3drenders"
-                    context["mediaType"] = key
-                elif mtype == "2d":
-                    key = "2drenders"
-                    context["mediaType"] = key
-                elif mtype == "playblast":
-                    key = "playblasts"
-                    context["mediaType"] = key
-                elif mtype == "external":
-                    key = "externalMedia"
-                    context["mediaType"] = key
+                # ----------------------------------------------------------
+                # Legacy shim (read-only): surface pre-migration content
+                # stored at the old capital-letter paths.
+                # Capital "Renders"/"Playblasts" are case-distinct from the
+                # new lowercase "renders"/"playblasts", so there is no
+                # overlap between old and new content.
+                # ----------------------------------------------------------
+                entityRoot = self.core.paths.getSimplifiedOutputRoot(entity, projectPath=baseProject)
+                if entityRoot:
+                    legacyRenderRoot = os.path.join(entityRoot, "Renders")
+                    if _legacy_dir_exists(legacyRenderRoot):
+                        legacyMap = {
+                            "3d":       ("3drenders",    os.path.join(legacyRenderRoot, "3dRender")),
+                            "2d":       ("2drenders",    os.path.join(legacyRenderRoot, "2dRender")),
+                            "external": ("externalMedia", os.path.join(legacyRenderRoot, "external")),
+                        }
+                        for lbl, (mKey, legacyBase) in legacyMap.items():
+                            if not os.path.isdir(legacyBase):
+                                continue
+                            for idfName in sorted(os.listdir(legacyBase)):
+                                idfPath = os.path.join(legacyBase, idfName)
+                                if not os.path.isdir(idfPath):
+                                    continue
+                                # Version folders saved directly under Renders are not identifiers.
+                                if re.match(r'^v\d+', idfName, re.IGNORECASE):
+                                    continue
+                                d = entity.copy()
+                                d["project_path"] = baseProject
+                                d["identifier"] = idfName
+                                d["displayName"] = (
+                                    idfName if lbl == "3d"
+                                    else "%s (%s)" % (idfName, lbl)
+                                )
+                                d["path"] = idfPath
+                                d["location"] = loc
+                                d["mediaType"] = mKey
+                                d["legacy"] = True
+                                mediaTypes[lbl].append(d)
 
-                template = self.core.projects.getResolvedProjectStructurePath(
-                    key, context=context
-                )
-                productData = self.core.projects.getMatchingPaths(template)
-                validData = []
-                for data in productData:
-                    if "." in data["identifier"]:
-                        if os.path.isfile(data["path"]):
-                            continue
+                    legacyPbRoot = os.path.join(entityRoot, "Playblasts")
+                    if _legacy_dir_exists(legacyPbRoot):
+                        for idfName in sorted(os.listdir(legacyPbRoot)):
+                            idfPath = os.path.join(legacyPbRoot, idfName)
+                            if not os.path.isdir(idfPath):
+                                continue
+                            # Version folders (v0001, v0002...) saved directly under Playblasts
+                            # are not identifiers — skip them to avoid wrong UI grouping.
+                            if re.match(r'^v\d+', idfName, re.IGNORECASE):
+                                continue
+                            d = entity.copy()
+                            d["project_path"] = baseProject
+                            d["identifier"] = idfName
+                            d["displayName"] = "%s (playblast)" % idfName
+                            d["path"] = idfPath
+                            d["location"] = loc
+                            d["mediaType"] = "playblasts"
+                            d["legacy"] = True
+                            mediaTypes["playblast"].append(d)
 
-                    data["displayName"] = data["identifier"]
-                    data.update(context)
-                    if mtype != "3d":
-                        data["displayName"] += " (%s)" % mtype
+                # ----------------------------------------------------------
+                # Legacy shim for pre-flat-migration content in rendering
+                # locations. Before the flat structure was introduced, renders
+                # in custom locations were stored at:
+                #   <RenderingRoot>/Output/<stage>/<entity>/renders/
+                # The flat scanner above looks in <RenderingRoot>/<entity>/renders/
+                # and will miss this old content.  Surface it as legacy_flat
+                # entries so the Media Browser continues to show existing renders.
+                # ----------------------------------------------------------
+                if self.core.paths._isFlatRenderLocation(loc):
+                    oldEntityRoot = self.core.paths.getSimplifiedOutputRoot(entity, projectPath=baseProject)
+                    if oldEntityRoot and os.path.isdir(oldEntityRoot):
+                        for idfName, mediaTypeLabel, mediaKey in folderMap:
+                            suffix = "renders" if "render" in mediaKey else (
+                                "playblasts" if mediaKey == "playblasts" else "external"
+                            )
+                            oldBasePath = os.path.join(oldEntityRoot, suffix)
+                            if not os.path.isdir(oldBasePath):
+                                continue
+                            hasVersions = any(
+                                os.path.isdir(os.path.join(oldBasePath, e))
+                                for e in os.listdir(oldBasePath)
+                            )
+                            if not hasVersions:
+                                continue
+                            d = entity.copy()
+                            d["project_path"] = baseProject
+                            d["identifier"] = idfName
+                            d["displayName"] = idfName
+                            d["path"] = oldBasePath
+                            d["location"] = loc
+                            d["mediaType"] = mediaKey
+                            d["legacy_flat"] = True
+                            mediaTypes[mediaTypeLabel].append(d)
 
-                    validData.append(data)
+        if not self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            for loc in searchLocations:
+                for mtype in mediaTypes:
+                    context = entity.copy()
+                    context["project_path"] = locationData[loc]
+                    if mtype == "3d":
+                        key = "3drenders"
+                        context["mediaType"] = key
+                    elif mtype == "2d":
+                        key = "2drenders"
+                        context["mediaType"] = key
+                    elif mtype == "playblast":
+                        key = "playblasts"
+                        context["mediaType"] = key
+                    elif mtype == "external":
+                        key = "externalMedia"
+                        context["mediaType"] = key
 
-                mediaTypes[mtype] += validData
+                    template = self.core.projects.getResolvedProjectStructurePath(
+                        key, context=context
+                    )
+                    productData = self.core.projects.getMatchingPaths(template)
+                    validData = []
+                    for data in productData:
+                        if "." in data["identifier"]:
+                            if os.path.isfile(data["path"]):
+                                continue
+
+                        data["displayName"] = data["identifier"]
+                        data.update(context)
+                        if mtype != "3d":
+                            data["displayName"] += " (%s)" % mtype
+
+                        validData.append(data)
+
+                    mediaTypes[mtype] += validData
 
         return mediaTypes
 
@@ -434,9 +566,9 @@ class MediaProducts(object):
                 ctx["project_path"] = locationData[loc]
                 basePath = self.getSimplifiedMediaBasePath(
                     ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders",
-                    location=loc
+                    location=loc,
                 )
-                versionBase = os.path.join(basePath, ctx["identifier"])
+                versionBase = basePath
                 if not os.path.isdir(versionBase):
                     continue
 
@@ -465,33 +597,102 @@ class MediaProducts(object):
                     else:
                         versions.append(c)
 
-        for loc in searchLocations:
-            ctx = context.copy()
-            ctx["project_path"] = locationData[loc]
-            templates = self.core.projects.getResolvedProjectStructurePaths(
-                key, context=ctx
-            )
-            versionData = []
-            for template in templates:
-                versionData += self.core.projects.getMatchingPaths(template)
+            # ------------------------------------------------------------------
+            # Legacy shim: surface pre-migration versions stored at
+            # <entity>/Renders/3dRender/<identifier>/v0001/ (capital letters).
+            # Fires only when context["legacy"] is True, which is set by the
+            # legacy shim in getIdentifiersByType when the identifier was
+            # discovered under the old capital-letter hierarchy.
+            # ------------------------------------------------------------------
+            if context.get("legacy"):
+                idfPath = context.get("path", "")
+                if idfPath and os.path.isdir(idfPath):
+                    for versionName in sorted(os.listdir(idfPath)):
+                        versionPath = os.path.join(idfPath, versionName)
+                        if not os.path.isdir(versionPath):
+                            continue
+                        if (
+                            self.core.products.getIntVersionFromVersionName(versionName) is None
+                            and versionName != "master"
+                            and os.getenv("PRISM_SHOW_INVALID_VERSION_NAMES", "0") == "0"
+                        ):
+                            continue
+                        c = self.getDeepCopy(context)
+                        c["version"] = versionName
+                        c["path"] = versionPath
+                        c["paths"] = [versionPath]
+                        c["locations"] = {loc: versionPath}
+                        c["legacy"] = True
+                        for version in versions:
+                            if version.get("version") == c.get("version"):
+                                version["paths"].append(c.get("path"))
+                                version["locations"].update(c.get("locations"))
+                                break
+                        else:
+                            versions.append(c)
 
-            for data in versionData:
-                c = self.getDeepCopy(context)
-                c.update(data)
-                if self.core.products.getIntVersionFromVersionName(c["version"]) is None and c["version"] != "master" and os.getenv("PRISM_SHOW_INVALID_VERSION_NAMES", "0") == "0":
-                    continue
+            # ------------------------------------------------------------------
+            # Legacy shim for pre-flat-migration content in rendering locations.
+            # Fires when the identifier was discovered under the old
+            # Output/<stage>/<entity> hierarchy inside a flat rendering location.
+            # context["path"] already points to the old base folder.
+            # ------------------------------------------------------------------
+            if context.get("legacy_flat"):
+                idfPath = context.get("path", "")
+                idfLoc = context.get("location", "global")
+                if idfPath and os.path.isdir(idfPath):
+                    for versionName in sorted(os.listdir(idfPath)):
+                        versionPath = os.path.join(idfPath, versionName)
+                        if not os.path.isdir(versionPath):
+                            continue
+                        if (
+                            self.core.products.getIntVersionFromVersionName(versionName) is None
+                            and versionName != "master"
+                            and os.getenv("PRISM_SHOW_INVALID_VERSION_NAMES", "0") == "0"
+                        ):
+                            continue
+                        c = self.getDeepCopy(context)
+                        c["version"] = versionName
+                        c["path"] = versionPath
+                        c["paths"] = [versionPath]
+                        c["locations"] = {idfLoc: versionPath}
+                        c["legacy_flat"] = True
+                        for version in versions:
+                            if version.get("version") == c.get("version"):
+                                version["paths"].append(c.get("path"))
+                                version["locations"].update(c.get("locations"))
+                                break
+                        else:
+                            versions.append(c)
 
-                c["paths"] = [data.get("path")]
-                c["locations"] = {loc: data.get("path", "")}
+        if not self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            for loc in searchLocations:
+                ctx = context.copy()
+                ctx["project_path"] = locationData[loc]
+                templates = self.core.projects.getResolvedProjectStructurePaths(
+                    key, context=ctx
+                )
+                versionData = []
+                for template in templates:
+                    versionData += self.core.projects.getMatchingPaths(template)
 
-                for version in versions:
-                    if version.get("version") == c.get("version"):
-                        version["paths"].append(c.get("path"))
-                        version["locations"].update(c.get("locations"))
-                        break
-                else:
-                    versions.append(c)
-                    continue
+                for data in versionData:
+                    c = self.getDeepCopy(context)
+                    c.update(data)
+                    if self.core.products.getIntVersionFromVersionName(c["version"]) is None and c["version"] != "master" and os.getenv("PRISM_SHOW_INVALID_VERSION_NAMES", "0") == "0":
+                        continue
+
+                    c["paths"] = [data.get("path")]
+                    c["locations"] = {loc: data.get("path", "")}
+
+                    for version in versions:
+                        if version.get("version") == c.get("version"):
+                            version["paths"].append(c.get("path"))
+                            version["locations"].update(c.get("locations"))
+                            break
+                    else:
+                        versions.append(c)
+                        continue
 
         return versions
 
@@ -523,6 +724,11 @@ class MediaProducts(object):
 
     @err_catcher(name=__name__)
     def getAovPathFromVersion(self, version):
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            # In the new structure the version folder IS the AOV parent.
+            # The caller appends the specific AOV name on top of this.
+            return version.get("path", "")
+
         key = "aovs"
         context = version.copy()
         template = self.core.projects.getResolvedProjectStructurePath(
@@ -533,8 +739,33 @@ class MediaProducts(object):
 
     @err_catcher(name=__name__)
     def getAOVsFromVersion(self, version):
-        if version.get("mediaType") == "playblasts":
+        if version.get("mediaType") in ("playblasts", "externalMedia"):
             return []
+
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            # AOVs are direct subdirectories of the version folder:
+            #   <entity>/renders/<version>/<aov>/
+            # Iterate ALL known locations so network paths (e.g. "Rendering")
+            # are also scanned.  Deduplicate AOV names across locations.
+            locationPaths = version.get("locations") or {}
+            if not locationPaths and version.get("path"):
+                locationPaths = {"_single": version["path"]}
+
+            seen = set()
+            aovs = []
+            for locPath in locationPaths.values():
+                if not locPath or not os.path.isdir(locPath):
+                    continue
+                for entry in sorted(os.listdir(locPath)):
+                    aovPath = os.path.join(locPath, entry)
+                    if not os.path.isdir(aovPath) or entry in seen:
+                        continue
+                    seen.add(entry)
+                    d = version.copy()
+                    d["aov"] = entry
+                    d["path"] = aovPath
+                    aovs.append(d)
+            return aovs
 
         key = "aovs"
 
@@ -589,25 +820,44 @@ class MediaProducts(object):
             else:
                 return []
 
-        folders = []
-        if context.get("locations"):
-            locations = self.core.paths.getRenderProductBasePaths()
-            for loc in context["locations"]:
-                if loc not in locations:
-                    continue
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            # Derive the file folder directly from the version path.
+            # For 3D renders, files live inside an AOV subfolder.
+            # For all other types, files live directly in the version folder.
+            mediaType = context.get("mediaType", "3drenders")
+            if context.get("locations"):
+                versionPaths = list(context["locations"].values())
+            elif context.get("path"):
+                versionPaths = [context["path"]]
+            else:
+                return []
 
-                ctx = context.copy()
-                ctx["project_path"] = locations[loc]
-                template = self.core.projects.getResolvedProjectStructurePath(
-                    key, context=ctx
-                )
-                folders.append(os.path.dirname(template))
-
+            folders = []
+            for vp in versionPaths:
+                if mediaType == "3drenders":
+                    folders.append(os.path.join(vp, context["aov"]))
+                else:
+                    folders.append(vp)
         else:
-            template = self.core.projects.getResolvedProjectStructurePath(
-                key, context=context
-            )
-            folders = [os.path.dirname(template)]
+            folders = []
+            if context.get("locations"):
+                locations = self.core.paths.getRenderProductBasePaths()
+                for loc in context["locations"]:
+                    if loc not in locations:
+                        continue
+
+                    ctx = context.copy()
+                    ctx["project_path"] = locations[loc]
+                    template = self.core.projects.getResolvedProjectStructurePath(
+                        key, context=ctx
+                    )
+                    folders.append(os.path.dirname(template))
+
+            else:
+                template = self.core.projects.getResolvedProjectStructurePath(
+                    key, context=context
+                )
+                folders = [os.path.dirname(template)]
 
         filepaths = []
         for folder in folders:
@@ -865,9 +1115,9 @@ class MediaProducts(object):
         if self.core.paths.isSimplifiedArtistWorkflowEnabled():
             baseRoot = self.getSimplifiedMediaBasePath(
                 entity, basePath, context.get("mediaType") or mediaType or "3drenders",
-                location=location
+                location=location,
             )
-            versionRoot = os.path.join(baseRoot, task, version)
+            versionRoot = os.path.join(baseRoot, version)
             if entity.get("type") == "asset":
                 entityLabel = os.path.basename(entity["asset_path"])
             else:
@@ -878,10 +1128,19 @@ class MediaProducts(object):
                         entity["shot"],
                     )
 
+            # Prepend the numeric project code (e.g. "56_") so render outputs
+            # match the scenefile naming convention.  Empty when the project
+            # name has no leading digits — no stray underscore in that case.
+            # The identifier is intentionally omitted from the filename; it is
+            # only used to look up the version stack, never as a folder or name
+            # token in flat mode.
+            pcode = self.core.paths.getProjectCode()
+            pcodePrefix = "%s_" % pcode if pcode else ""
+
             if context.get("mediaType") == "2drenders":
-                filename = "%s_%s_%s%s%s" % (
+                filename = "%s%s_%s%s%s" % (
+                    pcodePrefix,
                     entityLabel,
-                    task,
                     version,
                     "." + framePadding if framePadding else "",
                     extension,
@@ -889,9 +1148,9 @@ class MediaProducts(object):
                 outputPath = os.path.join(versionRoot, filename)
             else:
                 layer = context.get("layer", "")
-                filename = "%s_%s_%s%s%s%s" % (
+                filename = "%s%s_%s%s%s%s" % (
+                    pcodePrefix,
                     entityLabel,
-                    task,
                     version,
                     "_%s" % layer if layer else "",
                     "_%s" % aov if aov else "",
@@ -959,7 +1218,7 @@ class MediaProducts(object):
 
         if self.core.paths.isSimplifiedArtistWorkflowEnabled():
             baseRoot = self.getSimplifiedMediaBasePath(entity, basePath, "playblasts", location=location)
-            versionRoot = os.path.join(baseRoot, task, version)
+            versionRoot = os.path.join(baseRoot, version)
             if entity["type"] == "asset":
                 entityLabel = os.path.basename(entity["asset_path"])
             else:
@@ -970,9 +1229,15 @@ class MediaProducts(object):
                         entity["shot"],
                     )
 
-            filename = "%s_%s_%s%s%s" % (
+            # Prepend the numeric project code (e.g. "56_") to match the
+            # scenefile / render naming convention.  Empty when absent.
+            # The identifier (task) is intentionally omitted from the filename.
+            pcode = self.core.paths.getProjectCode()
+            pcodePrefix = "%s_" % pcode if pcode else ""
+
+            filename = "%s%s_%s%s%s" % (
+                pcodePrefix,
                 entityLabel,
-                task,
                 version,
                 "." + framePadding if framePadding else "",
                 extension,
@@ -1022,58 +1287,86 @@ class MediaProducts(object):
                 ctx["project_path"] = locations[loc]
                 basePath = self.getSimplifiedMediaBasePath(
                     ctx, ctx["project_path"], ctx.get("mediaType") or "3drenders",
-                    location=loc
+                    location=loc,
                 )
-                versionBase = os.path.join(basePath, ctx["identifier"])
+                versionBase = basePath
                 if not os.path.isdir(versionBase):
                     continue
 
                 for versionName in os.listdir(versionBase):
                     versionPath = os.path.join(versionBase, versionName)
-                    if os.path.isdir(versionPath):
-                        validData.append({"version": versionName, "path": versionPath})
+                    if not os.path.isdir(versionPath):
+                        continue
 
-        for loc in locations:
-            ctx = context.copy()
-            ctx["project_path"] = locations[loc]
-            template = self.core.projects.getResolvedProjectStructurePath(
-                key, context=ctx
-            )
-
-            productData = self.core.projects.getMatchingPaths(template)
-            for data in productData:
-                if ignoreEmpty:
-                    if ignoreFolder:
-                        files = None
-                        for root, folders, files in os.walk(data["path"]):
-                            break
-                        
-                        if not files:
-                            continue
-
-                    else:
-                        if not os.path.isdir(data["path"]):
-                            continue
-
-                    if ctx.get("mediaType") == "2drenders":
-                        exFiles = os.listdir(data["path"])
-                        if len(exFiles) > 1 or (
-                            len(exFiles) == 1 and not exFiles[0].startswith("versioninfo")
-                        ):
-                            validData.append(data)
-                    else:
-                        for folder in os.listdir(data["path"]):
-                            path = os.path.join(data["path"], folder)
-                            if not os.path.isdir(path):
+                    if ignoreEmpty:
+                        mediaType = ctx.get("mediaType", "3drenders")
+                        if mediaType == "2drenders":
+                            entries = [
+                                e for e in os.listdir(versionPath)
+                                if not e.startswith("versioninfo")
+                            ]
+                            if not entries:
+                                continue
+                        else:
+                            hasContent = False
+                            for aovEntry in os.listdir(versionPath):
+                                aovPath = os.path.join(versionPath, aovEntry)
+                                if not os.path.isdir(aovPath):
+                                    continue
+                                aovFiles = [
+                                    f for f in os.listdir(aovPath)
+                                    if not f.startswith("versioninfo")
+                                ]
+                                if aovFiles:
+                                    hasContent = True
+                                    break
+                            if not hasContent:
                                 continue
 
-                            exFiles = os.listdir(path)
+                    validData.append({"version": versionName, "path": versionPath})
+
+        else:
+            for loc in locations:
+                ctx = context.copy()
+                ctx["project_path"] = locations[loc]
+                template = self.core.projects.getResolvedProjectStructurePath(
+                    key, context=ctx
+                )
+
+                productData = self.core.projects.getMatchingPaths(template)
+                for data in productData:
+                    if ignoreEmpty:
+                        if ignoreFolder:
+                            files = None
+                            for root, folders, files in os.walk(data["path"]):
+                                break
+
+                            if not files:
+                                continue
+
+                        else:
+                            if not os.path.isdir(data["path"]):
+                                continue
+
+                        if ctx.get("mediaType") == "2drenders":
+                            exFiles = os.listdir(data["path"])
                             if len(exFiles) > 1 or (
                                 len(exFiles) == 1 and not exFiles[0].startswith("versioninfo")
                             ):
                                 validData.append(data)
-                else:
-                    validData.append(data)
+                        else:
+                            for folder in os.listdir(data["path"]):
+                                path = os.path.join(data["path"], folder)
+                                if not os.path.isdir(path):
+                                    continue
+
+                                exFiles = os.listdir(path)
+                                if len(exFiles) > 1 or (
+                                    len(exFiles) == 1 and not exFiles[0].startswith("versioninfo")
+                                ):
+                                    validData.append(data)
+                    else:
+                        validData.append(data)
 
         highversion = None
         for data in validData:
@@ -1316,7 +1609,7 @@ class MediaProducts(object):
                 basePath = self.getSimplifiedMediaBasePath(
                     compatData, compatData["project_path"], compatData.get("mediaType") or mediaType
                 )
-                return os.path.join(basePath, compatData["identifier"], compatData["version"])
+                return os.path.join(basePath, compatData["version"])
 
         if not entityType:
             entityType = self.core.paths.getEntityTypeFromPath(path)
@@ -1721,11 +2014,20 @@ class MediaProducts(object):
         context["task"] = self.core.paths.normalizeTask(
             context.get("task"), context=context, reason="media aov creation"
         )
-        
+
         if "user" not in context:
             context["user"] = self.core.user
 
-        path = self.core.projects.getResolvedProjectStructurePath("aovs", context)
+        if self.core.paths.isSimplifiedArtistWorkflowEnabled():
+            projectPath = (
+                entity.get("project_path")
+                or self.core.paths.getRenderProductBasePaths().get("global", "")
+            )
+            aovLocation = self.core.paths.getLocationNameFromBasePath(projectPath) or "global"
+            versionBase = self.getSimplifiedMediaBasePath(entity, projectPath, identifierType, location=aovLocation)
+            path = os.path.join(versionBase, version, aov)
+        else:
+            path = self.core.projects.getResolvedProjectStructurePath("aovs", context)
 
         if not os.path.exists(path):
             try:

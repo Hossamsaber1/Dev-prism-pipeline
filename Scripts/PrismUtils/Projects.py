@@ -1767,6 +1767,10 @@ class Projects(object):
                 cfgPath = self.core.configs.getProjectConfigPath(glbPrjPath)
                 context["project_name"] = self.core.getConfig("globals", "project_name", configPath=cfgPath) or ""
 
+        if "project_name" in context and "project_code" not in context:
+            _m = re.match(r'^(\d+)', context["project_name"])
+            context["project_code"] = _m.group(1) if _m else ""
+
         if structure is None:
             structure = self.getProjectStructure(prjPath)
 

@@ -5,194 +5,8 @@
         "use_flat_structure": true,
         "departments_asset": [],
         "departments_shot": [],
-        "taskpresets_asset": [
-            {
-                "name": "All",
-                "departments": [
-                    {
-                        "name": "Concept",
-                        "tasks": [
-                            "Concept"
-                        ]
-                    },
-                    {
-                        "name": "Modeling",
-                        "tasks": [
-                            "Modeling"
-                        ]
-                    },
-                    {
-                        "name": "Surfacing",
-                        "tasks": [
-                            "Surfacing"
-                        ]
-                    },
-                    {
-                        "name": "Rigging",
-                        "tasks": [
-                            "Rigging"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Character",
-                "departments": [
-                    {
-                        "name": "Modeling",
-                        "tasks": [
-                            "Modeling"
-                        ]
-                    },
-                    {
-                        "name": "Surfacing",
-                        "tasks": [
-                            "Surfacing"
-                        ]
-                    },
-                    {
-                        "name": "Rigging",
-                        "tasks": [
-                            "Rigging"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Prop",
-                "departments": [
-                    {
-                        "name": "Modeling",
-                        "tasks": [
-                            "Modeling"
-                        ]
-                    },
-                    {
-                        "name": "Surfacing",
-                        "tasks": [
-                            "Surfacing"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Environment",
-                "departments": [
-                    {
-                        "name": "Modeling",
-                        "tasks": [
-                            "Layout"
-                        ]
-                    }
-                ]
-            }
-        ],
-        "taskpresets_shot": [
-            {
-                "name": "All",
-                "departments": [
-                    {
-                        "name": "Layout",
-                        "tasks": [
-                            "Layout"
-                        ]
-                    },
-                    {
-                        "name": "Animation",
-                        "tasks": [
-                            "Animation"
-                        ]
-                    },
-                    {
-                        "name": "CharFX",
-                        "tasks": [
-                            "CharacterEffects"
-                        ]
-                    },
-                    {
-                        "name": "FX",
-                        "tasks": [
-                            "Effects"
-                        ]
-                    },
-                    {
-                        "name": "Lighting",
-                        "tasks": [
-                            "Lighting"
-                        ]
-                    },
-                    {
-                        "name": "Compositing",
-                        "tasks": [
-                            "Compositing"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Default",
-                "departments": [
-                    {
-                        "name": "Layout",
-                        "tasks": [
-                            "Layout"
-                        ]
-                    },
-                    {
-                        "name": "Animation",
-                        "tasks": [
-                            "Animation"
-                        ]
-                    },
-                    {
-                        "name": "Lighting",
-                        "tasks": [
-                            "Lighting"
-                        ]
-                    },
-                    {
-                        "name": "Compositing",
-                        "tasks": [
-                            "Compositing"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Simple",
-                "departments": [
-                    {
-                        "name": "Animation",
-                        "tasks": [
-                            "Animation"
-                        ]
-                    },
-                    {
-                        "name": "Lighting",
-                        "tasks": [
-                            "Lighting"
-                        ]
-                    },
-                    {
-                        "name": "Compositing",
-                        "tasks": [
-                            "Compositing"
-                        ]
-                    }
-                ]
-            },
-            {
-                "name": "Minimal",
-                "departments": [
-                    {
-                        "name": "Lighting",
-                        "tasks": [
-                            "Lighting"
-                        ]
-                    }
-                ]
-            }
-        ],
+        "taskpresets_asset": [],
+
         "uselocalfiles": false,
         "track_dependencies": "publish",
         "checkframerange": true,
@@ -242,9 +56,6 @@
         "shots": {
             "value": "@sequence_path@/@shot@"
         },
-        "textures": {
-            "value": "@project_path@"
-        },
         "departments": {
             "value": "@entity_path@/Scenefiles/@department@"
         },
@@ -252,10 +63,10 @@
             "value": "@department_path@/@task@"
         },
         "assetScenefiles": {
-            "value": "@task_path@/@asset@_@task@_@version@@extension@"
+            "value": "@task_path@/@project_code@_@asset@_@version@@extension@"
         },
         "shotScenefiles": {
-            "value": "@task_path@/@sequence@-@shot@_@task@_@version@@extension@"
+            "value": "@task_path@/@project_code@_@shot@_@sequence@_@version@@extension@"
         },
         "products": {
             "value": "@entity_path@/Export/@product@"
@@ -264,19 +75,16 @@
             "value": "@product_path@/@version@@_(wedge)@"
         },
         "productFilesAssets": {
-            "value": "@productversion_path@/@asset@_@product@_@version@@.(frame)@@extension@"
+            "value": "@productversion_path@/@project_code@_@asset@_@product@_@version@@.(frame)@@extension@"
         },
         "productFilesShots": {
-            "value": "@productversion_path@/@sequence@-@shot@_@product@_@version@@.(frame)@@extension@"
+            "value": "@productversion_path@/@project_code@_@shot@_@sequence@_@product@_@version@@.(frame)@@extension@"
         },
         "3drenders": {
-            "value": "@entity_path@/Renders/3dRender/@identifier@"
-        },
-        "2drenders": {
-            "value": "@entity_path@/Renders/2dRender/@identifier@"
+            "value": "@entity_path@/Renders/@identifier@"
         },
         "externalMedia": {
-            "value": "@entity_path@/Renders/external/@identifier@"
+            "value": "@entity_path@/Renders/@identifier@"
         },
         "renderVersions": {
             "value": "@render_path@/@version@"
@@ -285,10 +93,10 @@
             "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"mediaType\") == \"2drenders\":\n\ttemplate = \"@renderversion_path@\"\nelse:\n\ttemplate = \"@renderversion_path@/@aov@\"]"
         },
         "renderFilesAssets": {
-            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"mediaType\") == \"2drenders\":\n\ttemplate = \"@aov_path@/@asset@_@identifier@_@version@@.(frame)@@extension@\"\nelse:\n\ttemplate = \"@aov_path@/@asset@_@identifier@_@version@@._(layer)@_@aov@@.(frame)@@extension@\"]"
+            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"mediaType\") == \"2drenders\":\n\ttemplate = \"@aov_path@/@project_code@_@asset@_@version@@.(frame)@@extension@\"\nelse:\n\ttemplate = \"@aov_path@/@project_code@_@asset@_@version@@._(layer)@_@aov@@.(frame)@@extension@\"]"
         },
         "renderFilesShots": {
-            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"mediaType\") == \"2drenders\":\n\ttemplate = \"@aov_path@/@sequence@-@shot@_@identifier@_@version@@.(frame)@@extension@\"\nelse:\n\ttemplate = \"@aov_path@/@sequence@-@shot@_@identifier@_@version@@_(layer)@_@aov@@.(frame)@@extension@\"]"
+            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"mediaType\") == \"2drenders\":\n\ttemplate = \"@aov_path@/@project_code@_@shot@_@sequence@_@version@@.(frame)@@extension@\"\nelse:\n\ttemplate = \"@aov_path@/@project_code@_@shot@_@sequence@_@version@@_(layer)@_@aov@@.(frame)@@extension@\"]"
         },
         "playblasts": {
             "value": "@entity_path@/Playblasts/@identifier@"
@@ -297,13 +105,13 @@
             "value": "@playblast_path@/@version@"
         },
         "playblastFilesAssets": {
-            "value": "@playblastversion_path@/@asset@_@identifier@_@version@@.(frame)@@extension@"
+            "value": "@playblastversion_path@/@project_code@_@asset@_@version@@.(frame)@@extension@"
         },
         "playblastFilesShots": {
-            "value": "@playblastversion_path@/@sequence@-@shot@_@identifier@_@version@@.(frame)@@extension@"
+            "value": "@playblastversion_path@/@project_code@_@shot@_@sequence@_@version@@.(frame)@@extension@"
         },
         "deadlineJobName": {
-            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"type\") == \"asset\":\n    base = \"@asset@\"\nelse:\n    base = \"@sequence@-@shot@\"\n\ntemplate = base + \"_@product@@identifier@_@version@@_(layer)@@_(comment)@\"]"
+            "value": "[expression,#  available variables:\n#  \"core\" - PrismCore\n#  \"context\" - dict\n\nif context.get(\"type\") == \"asset\":\n    base = \"@asset@\"\nelse:\n    base = \"@shot@_@sequence@\"\n\ntemplate = base + \"_@product@_@version@@_(layer)@@_(comment)@\"]"
         }
     },
     "defaultpasses": {

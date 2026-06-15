@@ -116,6 +116,17 @@ class PathManager(object):
             and self.normalizeTask(task) == self.defaultTask
         )
 
+    @err_catcher(name=__name__)
+    def getProjectCode(self, projectName=None):
+        """Return the numeric prefix of the project name (e.g. "56-ERG" -> "56").
+
+        Empty string when the project name has no leading digits, so callers can
+        safely prepend "<code>_" without producing a stray leading underscore.
+        """
+        name = projectName if projectName is not None else (self.core.projectName or "")
+        m = re.match(r'^(\d+)', name)
+        return m.group(1) if m else ""
+
     def _isFlatRenderLocation(self, location):
         """Return True when *location* is a custom flat rendering location (not global or local)."""
         return location is not None and location not in ("global", "local")
@@ -317,7 +328,9 @@ class PathManager(object):
 
         filename = os.path.basename(path)
         base, ext = self.splitext(filename)
-        versionMatch = re.match(r"^(?P<name>.+)_(?P<version>v\d+)$", base)
+        # Strip optional project_code prefix (e.g. "56_") so "56_Chair_v0001" → "Chair_v0001"
+        stripped_base = re.sub(r'^\d+_', '', base)
+        versionMatch = re.match(r"^(?P<name>.+)_(?P<version>v\d+)$", stripped_base)
         if not versionMatch:
             return {}
 
@@ -538,10 +551,13 @@ class PathManager(object):
             department, context=entity, reason="generate scene path"
         )
         task = self.normalizeTask(task, context=entity, reason="generate scene path")
+        _pname = self.core.projectName or ""
+        _pcode = self.getProjectCode(_pname)
         context = entity.copy()
         context.update({
             "project_path": self.core.projectPath,
-            "project_name": self.core.projectName,
+            "project_name": _pname,
+            "project_code": _pcode,
             "department": department,
             "task": task,
             "version": version,
@@ -573,7 +589,9 @@ class PathManager(object):
                     shotLabel = "%s_%s" % (entity["sequence"].replace("\\", "/").split("/")[-1], entity["shot"])
                 name = shotLabel
 
-            filename = "%s_%s%s" % (name, context["version"], extension)
+            pcode = context.get("project_code", "")
+            prefix = "%s_" % pcode if pcode else ""
+            filename = "%s%s_%s%s" % (prefix, name, context["version"], extension)
             scenePath = os.path.join(folder, filename)
             scenePath = self.core.convertPath(scenePath, location)
             logger.debug("Generated simplified scenefile path: %s", scenePath)
