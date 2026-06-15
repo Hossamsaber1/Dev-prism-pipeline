@@ -1553,6 +1553,9 @@ class Projects(object):
         _flatMode = bool(
             self.core.getConfig("globals", "use_flat_structure", config="project")
         )
+        # IMPORTANT: When adding a new flat-mode media key, update _flatKeys here
+        # AND in ProjectSettings.validateFolderWidget()
+        # AND in MediaProducts.getSimplifiedMediaBasePath()
         _flatKeys = {"3drenders", "2drenders", "externalMedia", "playblasts"}
 
         errors = {}
