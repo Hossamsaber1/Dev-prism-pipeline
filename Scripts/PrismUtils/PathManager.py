@@ -57,12 +57,18 @@ class PathManager(object):
         self.defaultTask = "work"
         self.simplifiedAssetStage = os.getenv("PRISM_ASSET_OUTPUT_STAGE", "01-Modeling")
         self.simplifiedShotStage = os.getenv("PRISM_SHOT_OUTPUT_STAGE", "04-Cameras")
+        # EntityResolver abstraction — centralises flat vs legacy path routing.
+        self.resolver = MediaPathResolver(self)
 
     @err_catcher(name=__name__)
     def isSimplifiedArtistWorkflowEnabled(self):
-        # Compatibility patch: keep departments/tasks in the core data model, but
-        # switch the artist-facing path flow to defaulted simplified locations.
-        return True
+        # Read from per-project config so the mode is togglable per project.
+        # Key: globals.use_flat_structure (bool)
+        # Missing key → default True (flat mode) for this studio fork.
+        val = self.core.getConfig("globals", "use_flat_structure", config="project")
+        if val is None:
+            return True
+        return bool(val)
 
     @err_catcher(name=__name__)
     def normalizeDepartment(self, value, context=None, reason=None):
@@ -110,12 +116,37 @@ class PathManager(object):
             and self.normalizeTask(task) == self.defaultTask
         )
 
+    def _isFlatRenderLocation(self, location):
+        """Return True when *location* is a custom flat rendering location (not global or local)."""
+        return location is not None and location not in ("global", "local")
+
+    def getLocationNameFromBasePath(self, basePath):
+        """Return the location name whose registered base path matches *basePath*, or None."""
+        basePath = os.path.normpath(basePath)
+        for loc, path in self.getRenderProductBasePaths().items():
+            if os.path.normpath(path) == basePath:
+                return loc
+        return None
+
     @err_catcher(name=__name__)
-    def getSimplifiedOutputRoot(self, entity, projectPath=None):
+    def getSimplifiedOutputRoot(self, entity, projectPath=None, location=None):
         if not entity or entity.get("type") not in ["asset", "shot"]:
             return ""
 
         projectPath = os.path.normpath(projectPath or entity.get("project_path") or self.core.projectPath)
+
+        # Flat rendering locations omit Output/<stage> — the entity sits directly under the location root.
+        if self._isFlatRenderLocation(location):
+            if entity.get("type") == "asset":
+                assetPath = entity.get("asset_path", "").replace("\\", "/").strip("/")
+                return os.path.join(projectPath, assetPath)
+            parts = [projectPath]
+            sequence = entity.get("sequence")
+            if sequence:
+                parts.append(sequence)
+            parts.append(entity.get("shot", ""))
+            return os.path.join(*parts)
+
         if entity.get("type") == "asset":
             assetPath = entity.get("asset_path", "").replace("\\", "/").strip("/")
             return os.path.join(projectPath, "Output", self.simplifiedAssetStage, assetPath)
@@ -136,13 +167,82 @@ class PathManager(object):
 
         return os.path.join(root, "Scenefiles")
 
+    def _parseEntityFromFlatRelPath(self, rel, projectPath):
+        """Return entity data dict parsed from *rel*, a path relative to a flat rendering location root.
+
+        Uses the global project structure to distinguish shots from assets via disk existence.
+        Falls back to treating the path as a shot when neither exists on disk yet.
+        """
+        markers = {
+            "Scenefiles", "Export", "Renders", "Playblasts", "Publishes", "Previews",
+            "renders", "playblasts", "external",
+        }
+        parts = rel.split(os.sep)
+        entity_parts = None
+        for i, part in enumerate(parts):
+            if part in markers or re.match(r'^v\d+$', part, re.IGNORECASE) or part == "master":
+                entity_parts = parts[:i]
+                break
+        else:
+            if os.path.splitext(parts[-1])[1]:
+                entity_parts = parts[:-1]
+            else:
+                entity_parts = parts
+
+        entity_parts = [p for p in (entity_parts or []) if p and p != "."]
+        if not entity_parts:
+            return {}
+
+        shot_root = os.path.join(projectPath, "Output", self.simplifiedShotStage)
+        asset_root = os.path.join(projectPath, "Output", self.simplifiedAssetStage)
+
+        if os.path.isdir(os.path.join(shot_root, *entity_parts)):
+            shot = entity_parts[-1]
+            sequence = "/".join(entity_parts[:-1])
+            data = {"type": "shot", "entityType": "shot", "shot": shot, "project_path": projectPath}
+            if sequence:
+                data["sequence"] = sequence
+            return data
+
+        if os.path.isdir(os.path.join(asset_root, *entity_parts)):
+            assetPath = "/".join(entity_parts)
+            return {
+                "type": "asset", "entityType": "asset",
+                "asset_path": assetPath, "asset": entity_parts[-1],
+                "project_path": projectPath,
+            }
+
+        # Fallback: no global directory yet — assume shot.
+        shot = entity_parts[-1]
+        sequence = "/".join(entity_parts[:-1])
+        data = {"type": "shot", "entityType": "shot", "shot": shot, "project_path": projectPath}
+        if sequence:
+            data["sequence"] = sequence
+        return data
+
     @err_catcher(name=__name__)
     def getSimplifiedEntityDataFromPath(self, path, projectPath=None):
         if not path:
             return {}
 
-        globalPath = os.path.normpath(self.core.convertPath(path, "global"))
         projectPath = os.path.normpath(projectPath or self.core.projectPath)
+
+        # Check flat rendering locations first — these paths lack Output/<stage> so the
+        # standard global-path logic would never match them.
+        renderPaths = self.getRenderProductBasePaths()
+        nPath = os.path.normpath(path)
+        for locName, locBase in renderPaths.items():
+            if locName in ("global", "local"):
+                continue
+            locBase = os.path.normpath(locBase)
+            if nPath.startswith(locBase + os.sep) or nPath == locBase:
+                rel = os.path.relpath(nPath, locBase)
+                entityData = self._parseEntityFromFlatRelPath(rel, projectPath)
+                if entityData:
+                    return entityData
+                break  # Path is under a flat location but could not be parsed — skip global logic
+
+        globalPath = os.path.normpath(self.core.convertPath(path, "global"))
         assetRoot = os.path.normpath(os.path.join(projectPath, "Output", self.simplifiedAssetStage))
         shotRoot = os.path.normpath(os.path.join(projectPath, "Output", self.simplifiedShotStage))
         markers = [
@@ -152,6 +252,10 @@ class PathManager(object):
             "Playblasts",
             "Publishes",
             "Previews",
+            # New-structure type folders (lowercase — distinct from legacy capitals)
+            "renders",
+            "playblasts",
+            "external",
         ]
 
         def _entity_parts(rootPath):
@@ -160,6 +264,11 @@ class PathManager(object):
             for marker in markers:
                 if marker in parts:
                     return parts[: parts.index(marker)]
+
+            # Stop at version folder (v0001, v0002, master) — flat render structure
+            for i, part in enumerate(parts):
+                if re.match(r'^v\d+$', part, re.IGNORECASE) or part == "master":
+                    return parts[:i]
 
             if os.path.splitext(parts[-1])[1]:
                 return parts[:-1]
@@ -809,8 +918,12 @@ class PathManager(object):
                 "render_paths", configPath=configPath, dft=[]
             )
 
+        projectName = getattr(self.core, "projectName", None) or ""
         for cp in customPaths:
-            render_paths[cp] = customPaths[cp]
+            raw = customPaths[cp]
+            if "@project_name@" in raw and projectName:
+                raw = raw.replace("@project_name@", projectName)
+            render_paths[cp] = raw
 
         for path in render_paths:
             render_paths[path] = os.path.normpath(render_paths[path])
@@ -921,6 +1034,96 @@ class PathManager(object):
         simplifiedEntity = self.getSimplifiedEntityDataFromPath(path, projectPath=projectPath)
         if simplifiedEntity:
             return simplifiedEntity.get("type")
+
+
+class MediaPathResolver(object):
+    """
+    EntityResolver abstraction layer for flat vs legacy path routing.
+
+    Centralises the path routing logic that was previously scattered as
+    ``if isSimplifiedArtistWorkflowEnabled()`` inline blocks across
+    MediaProducts.py.  Callers obtain a path via:
+
+        self.core.paths.resolver.get_file_folder(entity, projectPath, mediaType, version, aov)
+
+    The resolver delegates to PathManager.isSimplifiedArtistWorkflowEnabled()
+    so the per-project ``use_flat_structure`` config key controls all routing
+    automatically.
+    """
+
+    # Maps internal mediaType keys to their on-disk folder names (flat mode).
+    FLAT_FOLDERS = {
+        "3drenders":    "renders",
+        "2drenders":    "renders",
+        "playblasts":   "playblasts",
+        "externalMedia": "external",
+    }
+
+    def __init__(self, pathManager):
+        self._pm = pathManager
+
+    @property
+    def _core(self):
+        return self._pm.core
+
+    # ------------------------------------------------------------------
+    # Primary interface — EntityResolver.get_path() equivalent
+    # ------------------------------------------------------------------
+
+    def get_media_base(self, entity, projectPath, mediaType):
+        """
+        Returns the base directory for the given media type under an entity.
+
+        Flat mode:   ``<entity_root>/renders``  |  ``playblasts``  |  ``external``
+        Legacy mode: ``<entity_root>``  (caller appends legacy sub-path)
+        """
+        root = self._pm.getSimplifiedOutputRoot(entity, projectPath=projectPath)
+        if not root:
+            return ""
+        if self._pm.isSimplifiedArtistWorkflowEnabled():
+            folder = self.FLAT_FOLDERS.get(mediaType, "renders")
+            return os.path.join(root, folder)
+        return root
+
+    def get_version_folder(self, entity, projectPath, mediaType, version):
+        """Returns ``<media_base>/<version>``."""
+        base = self.get_media_base(entity, projectPath, mediaType)
+        if not base:
+            return ""
+        return os.path.join(base, version)
+
+    def get_file_folder(self, entity, projectPath, mediaType, version, aov=None):
+        """
+        Returns the deepest directory that directly contains render files.
+
+        - 3D renders:  ``<entity>/renders/<version>/<aov>/``
+        - All others:  ``<entity>/<type>/<version>/``
+        """
+        vroot = self.get_version_folder(entity, projectPath, mediaType, version)
+        if not vroot:
+            return ""
+        if mediaType == "3drenders" and aov:
+            return os.path.join(vroot, aov)
+        return vroot
+
+    # ------------------------------------------------------------------
+    # Identifier fallback
+    # ------------------------------------------------------------------
+
+    def resolve_identifier(self, entity, identifier):
+        """
+        Returns *identifier* unchanged if truthy.
+        Falls back to the entity name so filenames remain meaningful
+        even when no explicit identifier is provided.
+
+        In flat mode the identifier is **only** embedded in the filename —
+        it never becomes a folder component.
+        """
+        if identifier:
+            return identifier
+        if entity.get("type") == "asset":
+            return os.path.basename(entity.get("asset_path", "")) or "render"
+        return entity.get("shot", "render")
 
 
 class MasterManager(QDialog):
