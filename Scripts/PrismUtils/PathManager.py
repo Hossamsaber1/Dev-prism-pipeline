@@ -116,6 +116,17 @@ class PathManager(object):
             and self.normalizeTask(task) == self.defaultTask
         )
 
+    @err_catcher(name=__name__)
+    def getProjectCode(self, projectName=None):
+        """Return the numeric prefix of the project name (e.g. "56-ERG" -> "56").
+
+        Empty string when the project name has no leading digits, so callers can
+        safely prepend "<code>_" without producing a stray leading underscore.
+        """
+        name = projectName if projectName is not None else (self.core.projectName or "")
+        m = re.match(r'^(\d+)', name)
+        return m.group(1) if m else ""
+
     def _isFlatRenderLocation(self, location):
         """Return True when *location* is a custom flat rendering location (not global or local)."""
         return location is not None and location not in ("global", "local")
@@ -541,8 +552,7 @@ class PathManager(object):
         )
         task = self.normalizeTask(task, context=entity, reason="generate scene path")
         _pname = self.core.projectName or ""
-        _pcode_m = re.match(r'^(\d+)', _pname)
-        _pcode = _pcode_m.group(1) if _pcode_m else ""
+        _pcode = self.getProjectCode(_pname)
         context = entity.copy()
         context.update({
             "project_path": self.core.projectPath,

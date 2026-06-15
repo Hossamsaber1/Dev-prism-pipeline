@@ -1128,16 +1128,19 @@ class MediaProducts(object):
                         entity["shot"],
                     )
 
-            # Fallback: when task (identifier) is absent, resolve from entity
-            # metadata so the filename token is never empty.  The identifier
-            # is used for the filename only — it never appears as a folder in
-            # flat mode.
-            effectiveTask = task or self.core.paths.resolver.resolve_identifier(entity, task)
+            # Prepend the numeric project code (e.g. "56_") so render outputs
+            # match the scenefile naming convention.  Empty when the project
+            # name has no leading digits — no stray underscore in that case.
+            # The identifier is intentionally omitted from the filename; it is
+            # only used to look up the version stack, never as a folder or name
+            # token in flat mode.
+            pcode = self.core.paths.getProjectCode()
+            pcodePrefix = "%s_" % pcode if pcode else ""
 
             if context.get("mediaType") == "2drenders":
-                filename = "%s_%s_%s%s%s" % (
+                filename = "%s%s_%s%s%s" % (
+                    pcodePrefix,
                     entityLabel,
-                    effectiveTask,
                     version,
                     "." + framePadding if framePadding else "",
                     extension,
@@ -1145,9 +1148,9 @@ class MediaProducts(object):
                 outputPath = os.path.join(versionRoot, filename)
             else:
                 layer = context.get("layer", "")
-                filename = "%s_%s_%s%s%s%s" % (
+                filename = "%s%s_%s%s%s%s" % (
+                    pcodePrefix,
                     entityLabel,
-                    effectiveTask,
                     version,
                     "_%s" % layer if layer else "",
                     "_%s" % aov if aov else "",
@@ -1226,9 +1229,15 @@ class MediaProducts(object):
                         entity["shot"],
                     )
 
-            filename = "%s_%s_%s%s%s" % (
+            # Prepend the numeric project code (e.g. "56_") to match the
+            # scenefile / render naming convention.  Empty when absent.
+            # The identifier (task) is intentionally omitted from the filename.
+            pcode = self.core.paths.getProjectCode()
+            pcodePrefix = "%s_" % pcode if pcode else ""
+
+            filename = "%s%s_%s%s%s" % (
+                pcodePrefix,
                 entityLabel,
-                task,
                 version,
                 "." + framePadding if framePadding else "",
                 extension,
