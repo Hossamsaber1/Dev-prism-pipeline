@@ -1093,10 +1093,26 @@ animationrange = interval tmpanimrange.x tmpanimrange.y
             rSettings["outputName"] = rSettings["outputName"].replace("beauty", "Beauty")
 
         if origin.cb_rangeType.currentText() != "Single Frame":
-            base, ext = os.path.splitext(rSettings["outputName"])
-            if not base.endswith("_"):
-                rsOutput = base + "_" + ext
-                rSettings["outputName"] = rsOutput
+            if isRs:
+                # Redshift path unchanged — finalised in the submit branch below.
+                base, ext = os.path.splitext(rSettings["outputName"])
+                if not base.endswith("_"):
+                    rSettings["outputName"] = base + "_" + ext
+            else:
+                # Standard renderer: produce dot-padded frame numbers, e.g.
+                # "...beauty.0006.tif".
+                #
+                # When the output is set via rt.rendOutPutFilename, Max does NOT
+                # substitute "#" padding — it leaves "####" literal and appends
+                # its own frame number directly before the extension with no
+                # separator. So we strip the "####" token entirely and add a
+                # trailing "." so Max writes "...beauty." + "0006" + ".tif".
+                pad = "#" * self.core.framePadding
+                base, ext = os.path.splitext(rSettings["outputName"])
+                if base.endswith(pad):
+                    base = base[: -len(pad)]
+                base = base.rstrip("._")
+                rSettings["outputName"] = base + "." + ext
 
         rt.renderSceneDialog.close()
         outputName = rSettings["outputName"]
@@ -1148,10 +1164,6 @@ animationrange = interval tmpanimrange.x tmpanimrange.y
         rSettings["savefilepath"] = rt.rendOutputFilename
 
         rt.rendSaveFile = True
-        # if self.appVersion[0] < 25:  # before Max2023
-        # outName = rSettings["outputName"].replace("#" * self.core.framePadding, "")
-        # else:
-        # outName = rSettings["outputName"]
         rt.rendOutPutFilename = outputName
 
     @err_catcher(name=__name__)
