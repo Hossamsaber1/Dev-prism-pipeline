@@ -595,6 +595,22 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
 
     @err_catcher(name=__name__)
     def refreshUiTriggered(self, state=None):
+        # Debounce rapid Refresh-button clicks.  Each click triggers the current
+        # tab's refresh, which spawns background workers that build thumbnails
+        # via QPixmap.  Piling these up on a burst of clicks causes random C++
+        # crashes when Prism runs inside a DCC such as 3ds Max, so we coalesce
+        # the burst into a single refresh.
+        timer = getattr(self, "_refreshTabsTimer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._doRefreshUiTriggered)
+            self._refreshTabsTimer = timer
+
+        timer.start(350)
+
+    @err_catcher(name=__name__)
+    def _doRefreshUiTriggered(self):
         if self.act_clearConfigCache.isChecked():
             self.core.configs.clearCache()
 

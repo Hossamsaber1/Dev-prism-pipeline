@@ -1620,6 +1620,19 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
 
     @err_catcher(name=__name__)
     def refreshScenefilesThreaded(self, reloadFiles=True, restoreSelection=False, wait=False):
+        # IMPORTANT: this refresh runs SYNCHRONOUSLY on the GUI thread.
+        # It previously ran refreshScenefiles() inside a background QThread, but
+        # that function reads Qt widget state (via getScenefileData). Touching Qt
+        # objects off the GUI thread causes access-violation crashes inside
+        # Qt5Core — confirmed from a 3ds Max minidump (0xC0000005 in Qt5Core.dll)
+        # when refreshing while Prism runs in-process in 3ds Max. A synchronous
+        # refresh is fully thread-safe; the trade-off is a brief UI pause.
+
+        # Guard against re-entrancy: processEvents() during the refresh can pump
+        # a queued Refresh click and recurse back into here.
+        if getattr(self, "_refreshingScenes", False):
+            return
+
         if restoreSelection:
             file = self.getSelectedScenefile()
         else:
@@ -1628,34 +1641,32 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
         curTask = self.getCurrentTask()
         if curTask:
             self.showScenesLoading()
-    
+
         self.scenefileQueue = []
         worker_scenes = self.core.worker(self.core)
-        worker_scenes.function = lambda w=worker_scenes: self.refreshScenefiles(reloadFiles=reloadFiles, restoreSelection=restoreSelection, worker=w, file=file)
-        worker_scenes.errored.connect(self.core.writeErrorLog)
         worker_scenes.dataSent.connect(self.refreshScenesDataSent)
-        worker_scenes.warningSent.connect(self.core.popup)
-        worker_scenes.finished.connect(self.onSceneThreadFinished)
-        QApplication.processEvents()
-        if not getattr(self, "curSceneThread", None):
-            self.curSceneThread = worker_scenes
-            QApplication.processEvents()
-            if self.b_sceneLayoutItems.isChecked():
-                self.clearScenefileItems()
-                self.addSceneItemsStretch()
-            elif self.b_sceneLayoutList.isChecked():
-                model = self.tw_scenefiles.model()
-                if model:
-                    model.clear()
 
-            QApplication.processEvents()
-            self.curSceneThread.start()
-        else:
-            self.nextSceneThread = worker_scenes
+        if self.b_sceneLayoutItems.isChecked():
+            self.clearScenefileItems()
+            self.addSceneItemsStretch()
+        elif self.b_sceneLayoutList.isChecked():
+            model = self.tw_scenefiles.model()
+            if model:
+                model.clear()
 
-        if wait:
-            while self.curSceneThread:
-                QApplication.processEvents()
+        self._refreshingScenes = True
+        try:
+            self.refreshScenefiles(
+                reloadFiles=reloadFiles,
+                restoreSelection=restoreSelection,
+                worker=worker_scenes,
+                file=file,
+            )
+        except Exception as e:
+            self.core.writeErrorLog(str(e))
+        finally:
+            self._refreshingScenes = False
+            self.hideScenesLoading()
 
     @err_catcher(name=__name__)
     def addSceneItemsStretch(self):

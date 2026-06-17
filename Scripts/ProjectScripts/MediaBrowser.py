@@ -287,6 +287,22 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
 
     @err_catcher(name=__name__)
     def refreshRender(self):
+        # Debounce rapid Refresh-button clicks.  Each click restarts a single
+        # timer so a burst of clicks coalesces into ONE navigate().  Spawning a
+        # fresh navigate() (and its background QPixmap preview worker) on every
+        # click piles up workers and triggers random 3ds Max C++ crashes, so we
+        # throttle here instead of refreshing per click.
+        timer = getattr(self, "_refreshTimer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._doRefreshRender)
+            self._refreshTimer = timer
+
+        timer.start(350)
+
+    @err_catcher(name=__name__)
+    def _doRefreshRender(self):
         curData = self.getCurrentData()
         self.navigate(curData)
 

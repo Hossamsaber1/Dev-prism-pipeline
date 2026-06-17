@@ -881,12 +881,14 @@ class ProjectEntities(object):
         assetPlayblasts = self.core.projects.getResolvedProjectStructurePath(
             "playblasts", context=entity
         )
+        # getResolvedProjectStructurePath returns False for keys not in the
+        # project structure (e.g. "2drenders" was intentionally removed).  Filter
+        # those out so os.path.dirname() never receives False, which would raise
+        # a TypeError, abort createAsset, and skip the post-create refresh.
         assetFolders = [
-            os.path.dirname(assetDep),
-            os.path.dirname(assetProducts),
-            os.path.dirname(asset3dRenders),
-            os.path.dirname(asset2dRenders),
-            os.path.dirname(assetPlayblasts),
+            os.path.dirname(p) for p in [
+                assetDep, assetProducts, asset3dRenders, asset2dRenders, assetPlayblasts
+            ] if p
         ]
 
         for assetFolder in assetFolders:
@@ -952,12 +954,14 @@ class ProjectEntities(object):
         shotPlayblasts = self.core.projects.getResolvedProjectStructurePath(
             "playblasts", context=entity
         )
+        # getResolvedProjectStructurePath returns False for keys that are not in
+        # the project structure (e.g. "2drenders" was intentionally removed).
+        # Filter those out so os.path.dirname() never receives False, which would
+        # raise a TypeError, abort createShot, and skip the post-create refresh.
         shotFolders = [
-            os.path.dirname(shotDep),
-            os.path.dirname(shotProducts),
-            os.path.dirname(shot3dRenders),
-            os.path.dirname(shot2dRenders),
-            os.path.dirname(shotPlayblasts),
+            os.path.dirname(p) for p in [
+                shotDep, shotProducts, shot3dRenders, shot2dRenders, shotPlayblasts
+            ] if p
         ]
 
         for shotFolder in shotFolders:
@@ -2114,6 +2118,11 @@ class ProjectEntities(object):
             template = self.core.projects.getResolvedProjectStructurePath(
                 key, context=context
             )
+            if not template:
+                # Key not in the project structure (e.g. "textures" removed) ->
+                # getResolvedProjectStructurePath returns False; skip to avoid
+                # getMatchingPaths(False) raising a TypeError.
+                continue
             productData = self.core.projects.getMatchingPaths(template)
             productDicts += productData
 
